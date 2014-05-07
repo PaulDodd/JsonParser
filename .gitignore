@@ -19,3 +19,10 @@
 *.exe
 *.out
 *.app
+
+# project specifics
+bin
+xcode_proj
+build
+test*
+
