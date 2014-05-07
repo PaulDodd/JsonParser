@@ -20,7 +20,7 @@ SET (CMAKE_CXX_FLAGS          "${CMAKE_CXX_FLAGS} -ljansson")
 set (CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_LIST_DIR}")
 set (PROJECT_BINARY_DIR "${CMAKE_CURRENT_LIST_DIR}/bin")
 set (PROJECT_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/includes")
-set (PROJECT_SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/json_wrapper")
+set (PROJECT_SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/impl")
 
 
 # add the binary tree to the search path for include files
