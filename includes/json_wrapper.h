@@ -19,6 +19,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <tuple>
 
 using namespace std;
 
@@ -38,6 +39,7 @@ class CJSONValue
     // Abstract methods
         virtual bool Parse (const json_t* pVal) = 0;
         virtual bool Dump (json_t*& pRet) = 0;
+        // virtual bool IsValid() = 0;
     
     // Accessor Methods
         const string& GetName() const { return m_name; }
@@ -89,7 +91,7 @@ class CJSONValueInt : public CJSONValue // may need an unsigned version of this 
 class CJSONValueFloat : public CJSONValue
 {
     public:
-        CJSONValueFloat(const string& name) : CJSONValue(JSON_REAL, name), m_Value(NULL) {}
+        CJSONValueFloat(const string& name, double* pval) : CJSONValue(JSON_REAL, name), m_Value(pval) {}
         ~CJSONValueFloat() {}
     
         bool Parse (const json_t* pVal)
@@ -257,6 +259,136 @@ class CJSONValueArray : public CJSONValue
 };
 
 
+// This requires c++11.
+#if __cplusplus >= 201103L
+
+
+// Because how the template arguments pack the tuple must be comprised of the following types: bool, int, double, or string.
+// Parse will fail if a different type is recieved.
+// ?? Can this be generalized more ??
+template<typename... TVals>
+class CJSONValueTuple : public CJSONValue
+{
+    public:
+        CJSONValueTuple(const string& name) : CJSONValue(JSON_ARRAY, name) {}
+    
+    // Overloaded Methods
+        bool Parse (const json_t* pVal)
+        {
+            bool bParseSuccess = false;
+            if(json_is_array(pVal))
+            {
+                bParseSuccess = true;
+                size_t n = json_array_size(pVal);
+                json_t* data;
+                
+                for (size_t i = 0; i < n; i++)
+                {
+                    char array_number[30]; // should be enough space.
+                    sprintf(&array_number[0], "-%zu", i);
+                    string elemName(m_name + string(array_number));
+                
+                    data = json_array_get(pVal, i);
+                    if(json_is_boolean(data))
+                    {
+                        bool temp;
+                        CJSONValueBool jtemp(elemName, &temp);
+                        jtemp.Parse(data);
+                        std::get<i>(*m_Value) = temp;
+                    }
+                    else if(json_is_integer(data))
+                    {
+                        int temp;
+                        CJSONValueInt jtemp(elemName, &temp);
+                        jtemp.Parse(data);
+                        std::get<i>(*m_Value) = temp;
+                    }
+                    else if(json_is_real(data))
+                    {
+                        double temp;
+                        CJSONValueFloat jtemp(elemName, &temp);
+                        jtemp.Parse(data);
+                        std::get<i>(*m_Value) = temp;
+                    }
+                    else if(json_is_string(data))
+                    {
+                        string temp;
+                        CJSONValueString jtemp(elemName, &temp);
+                        jtemp.Parse(data);
+                        std::get<i>(*m_Value) = temp;
+                    }
+                    else{
+                        bParseSuccess = false;
+                        fprintf(stderr, "ERROR: %s Could not parse tuple element. Unknown type. \n", m_name.c_str());
+                        break;
+                    }
+                }
+            }
+            else{
+                fprintf(stderr, "ERROR: %s is not an array as expected. \n", m_name.c_str());
+            }
+
+            return bParseSuccess;
+        }
+    
+        bool Dump (json_t*& pRet)
+        {
+            bool bDumpSuccess = true;
+            pRet = json_array();
+            if(pRet)
+            {
+                for(size_t i = 0; i < std::tuple_size<decltype(m_Value)>::value; i++)
+                {
+                    json_t* pVal = NULL;
+                    auto temp = std::get<i>(*m_Value);
+                    
+                    if(typeid(decltype(temp)) == typeid(bool))
+                    {
+                        CJSONValueBool tjson("", &temp);
+                        bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
+                    }
+                    else if(typeid(decltype(temp)) == typeid(int))
+                    {
+                        CJSONValueInt tjson("", &temp);
+                        bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
+                    }
+                    else if(typeid(decltype(temp)) == typeid(double) ||
+                            typeid(decltype(temp)) == typeid(float) )
+                    {
+                        CJSONValueFloat tjson("", &temp);
+                        bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
+                    }
+                    else if(typeid(decltype(temp)) == typeid(string))
+                    {
+                        CJSONValueString tjson("", &temp);
+                        bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
+                    }
+                    else{
+                        pVal = NULL;
+                    }
+                    
+                    if(pVal)
+                        bDumpSuccess = (json_array_append(pRet, pVal) != -1) && bDumpSuccess;
+                    else
+                        cout << "Error could not dump array element. "<< ((*m_Value)[i]) << endl;
+                }
+            }
+            else
+            {
+                bDumpSuccess = false;
+                cout << "Error! Could not dump array. "<< m_name << endl;
+                
+            }
+            return bDumpSuccess;
+        }
+    
+    
+    private:
+        tuple<TVals...>* m_Value;
+};
+
+#endif
+
 class CJSONValueObject : public CJSONValue
 {
     public:
@@ -338,6 +470,13 @@ class CJSONValueObject : public CJSONValue
         virtual void SetupJSONObject() = 0;
     
     // Class methods
+        template<class TVal, class JVal>
+        void AddNameValuePair(const string& name, TVal* pval)
+        {
+            m_Map.insert( pair< string, CJSONValue* >(name, new JVal(name, pval)));
+        }
+    
+        // Could Remove the following becasuse of the encompassing method above.
         void AddIntegerValue(const string& name, int* pval)
         {
             m_Map.insert(pair<string, CJSONValue* >(name,  new CJSONValueInt(name, pval)));
@@ -354,6 +493,7 @@ class CJSONValueObject : public CJSONValue
         {
             m_Map.insert(pair<string, CJSONValue* >(name,  new CJSONValueArray<string, CJSONValueString>(name, pval)));
         }
+    
         void AddObjectValue(const string& name, CJSONValueObject* pval)
         {
             m_Map.insert(pair<string, CJSONValue* >(name,  pval));
@@ -367,13 +507,11 @@ class CJSONValueObject : public CJSONValue
 };
 
 
-
 // This class is used to perform the file IO and interface with the
 // object/data classes defined above. If the order of the objects in
 // the file is known then there is no limitation to how many you can
 // have but could make the higher level protocols more complicated.
 // ?? object-name: "name" for parsing different classes in the same file ??
-
 class CJSONParser
 {
     public:

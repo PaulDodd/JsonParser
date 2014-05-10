@@ -90,6 +90,17 @@ int main(int argc, const char * argv[])
     {
         cout << "Error dumping the file." << endl;
     }
+    
+    
+    tuple<int, string> myTuple(10, "10");
+    int x = 10;
+    auto y = x+1;
+    auto z = std::get<0>(myTuple);
+    
+    cout << (typeid(y) == typeid(x) ? "True" : "False") << endl;
+    cout << (typeid(y) == typeid(double) ? "True" : "False") << endl;
+    cout << (typeid(z) == typeid(int) ? "True" : "False") << endl;
+    
     return 0;
 }
 
