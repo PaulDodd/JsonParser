@@ -111,7 +111,9 @@ int main(int argc, const char * argv[])
     
     net.DumpToFile("network.json");
     
-    
+    Network::CNetwork net2;
+    net2.LoadFromFile("network.json");
+    net2.PrintNetwork();
     
     return 0;
 }
