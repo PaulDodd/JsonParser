@@ -1,6 +1,8 @@
 
 
 #include "json_wrapper.h"
+#include "../../folding/SharedFiles/includes/Network.h"
+
 
 class tabular : public json::CJSONValueObject  // inherit the JSON Object for file parsing.
 {
@@ -96,10 +98,20 @@ int main(int argc, const char * argv[])
     int x = 10;
     auto y = x+1;
     auto z = std::get<0>(myTuple);
+
     
     cout << (typeid(y) == typeid(x) ? "True" : "False") << endl;
     cout << (typeid(y) == typeid(double) ? "True" : "False") << endl;
     cout << (typeid(z) == typeid(int) ? "True" : "False") << endl;
+    
+    Network::CNetwork net(10, (Network::Simple | Network::Directed));
+    net.AddEdge(0, 2);
+    net.AddEdge(3, 2);
+    net.AddEdge(3, 5);
+    
+    net.DumpToFile("network.json");
+    
+    
     
     return 0;
 }

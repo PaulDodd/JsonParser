@@ -20,6 +20,8 @@
 #include <vector>
 #include <map>
 #include <tuple>
+#include <type_traits>
+#include <utility>
 
 using namespace std;
 
@@ -86,6 +88,40 @@ class CJSONValueInt : public CJSONValue // may need an unsigned version of this 
     
     private:
         int* m_Value;
+};
+
+class CJSONValueUInt : public CJSONValue // may need an unsigned version of this class.
+{
+    public:
+        CJSONValueUInt(const string& name, size_t* pval) : CJSONValue(JSON_INTEGER, name), m_Value(pval) {}
+        ~CJSONValueUInt() {}
+    
+    // Overloaded Methods
+        bool Parse (const json_t* pVal)
+        {
+            bool bParseSuccess = false;
+            if(json_is_integer(pVal))
+            {
+                // cout << "JSON integer found" << endl;
+                *m_Value = json_integer_value(pVal);
+            }
+            else{
+                fprintf(stderr, "ERROR: %s is not an integer as expected.", m_name.c_str());
+            }
+            return bParseSuccess;
+        }
+    
+        bool Dump (json_t*& pRet)
+        {
+            pRet = json_integer(*m_Value);
+            return pRet != NULL;
+        }
+    
+    // Accessor Methods
+        const size_t& GetValue() const { return *m_Value; }
+    
+    private:
+        size_t* m_Value;
 };
 
 class CJSONValueFloat : public CJSONValue
@@ -241,7 +277,7 @@ class CJSONValueArray : public CJSONValue
                     if(pVal)
                         bDumpSuccess = (json_array_append(pRet, pVal) != -1) && bDumpSuccess;
                     else
-                        cout << "Error could not dump array element. "<< ((*m_Value)[i]) << endl;
+                        cout << "Error could not dump array element. "<< m_name << "-"<< i << endl;
                 }
             }
             else
@@ -263,6 +299,92 @@ class CJSONValueArray : public CJSONValue
 #if __cplusplus >= 201103L
 
 
+// My tuple utility functions.
+
+// base case
+template< std::size_t I = 0, class TVal, typename... Ts >
+inline typename std::enable_if< I == sizeof...(Ts), void >::type put (
+                                                                        std::tuple< Ts... >& t,
+                                                                        TVal& val,
+                                                                        const size_t& Index)
+{
+    return;
+}
+
+template< std::size_t I = 0, class TVal, typename... Ts >
+inline typename std::enable_if< I < sizeof...(Ts), void >::type put (
+                                                                        std::tuple< Ts... >& t,
+                                                                        TVal& val,
+                                                                        const size_t& Index)
+{
+    if(I == Index)
+        std::get<I>(t) = decltype(std::get<I>(t))(val);
+    else
+        put< (I+1), TVal, Ts... > (t, val, Index);
+}
+
+// base case
+template< std::size_t I = 0, class TVal, typename... Ts >
+inline typename std::enable_if< I == sizeof... (Ts), bool >::type is_type (
+                                                                            std::tuple< Ts... >& t,
+                                                                            const size_t& Index)
+{
+    return false; // Index out of range so return NULL.
+}
+
+template< std::size_t I = 0, class TVal, typename... Ts >
+inline typename std::enable_if< I < sizeof...(Ts), bool >::type is_type (
+                                                                            std::tuple< Ts... >& t,
+                                                                            const size_t& Index)
+{
+    if(I == Index)
+        return typeid(std::get<I>(t)) == typeid(TVal);
+    else
+        return is_type<I+1, TVal, Ts...>(t, Index);
+}
+
+
+// base case
+template< std::size_t I = 0, class TVal, typename... Ts >
+inline typename std::enable_if< I == sizeof... (Ts), TVal* >::type pull (
+                                                                            std::tuple< Ts... >& t,
+                                                                            const size_t& Index)
+{
+    return NULL; // Index out of range so return NULL.
+}
+
+template< std::size_t I = 0,  class TVal, typename... Ts >
+inline typename std::enable_if< I < sizeof...(Ts), TVal* >::type pull (
+                                                                            std::tuple< Ts... >& t,
+                                                                            const size_t& Index)
+{
+    if(I == Index)
+        return (TVal*)&std::get<I>(t);
+    else
+        return pull<I+1, TVal, Ts...>(t, Index);
+}
+
+
+
+template< std::size_t I = 0>
+inline typename std::enable_if< I == 5, void>::type count_to_five_or_less(const size_t& Index)
+{
+    return;
+}
+
+template< std::size_t I = 0>
+inline typename std::enable_if< I < 5, void>::type count_to_five_or_less(const size_t& Index)
+{
+    if(I < Index)
+        cout << I << endl;
+    count_to_five_or_less<I+1>(Index);
+}
+
+
+
+/************************************************************************************************************************************************************************/
+
+
 // Because how the template arguments pack the tuple must be comprised of the following types: bool, int, double, or string.
 // Parse will fail if a different type is recieved.
 // ?? Can this be generalized more ??
@@ -270,7 +392,7 @@ template<typename... TVals>
 class CJSONValueTuple : public CJSONValue
 {
     public:
-        CJSONValueTuple(const string& name) : CJSONValue(JSON_ARRAY, name) {}
+        CJSONValueTuple(const string& name, tuple<TVals...>* pval) : CJSONValue(JSON_ARRAY, name), m_Value(pval) {}
     
     // Overloaded Methods
         bool Parse (const json_t* pVal)
@@ -294,28 +416,29 @@ class CJSONValueTuple : public CJSONValue
                         bool temp;
                         CJSONValueBool jtemp(elemName, &temp);
                         jtemp.Parse(data);
-                        std::get<i>(*m_Value) = temp;
+                        // std::get<i>(*m_Value) = temp;
+                        put<0, bool, TVals...>(*m_Value, temp, i);
                     }
                     else if(json_is_integer(data))
                     {
                         int temp;
                         CJSONValueInt jtemp(elemName, &temp);
                         jtemp.Parse(data);
-                        std::get<i>(*m_Value) = temp;
+                        put<0, int, TVals...>(*m_Value, temp, i);
                     }
                     else if(json_is_real(data))
                     {
                         double temp;
                         CJSONValueFloat jtemp(elemName, &temp);
                         jtemp.Parse(data);
-                        std::get<i>(*m_Value) = temp;
+                        put<0, double, TVals...>(*m_Value, temp, i);
                     }
                     else if(json_is_string(data))
                     {
                         string temp;
                         CJSONValueString jtemp(elemName, &temp);
                         jtemp.Parse(data);
-                        std::get<i>(*m_Value) = temp;
+                        put<0, string, TVals...>(*m_Value, temp, i);
                     }
                     else{
                         bParseSuccess = false;
@@ -337,40 +460,47 @@ class CJSONValueTuple : public CJSONValue
             pRet = json_array();
             if(pRet)
             {
-                for(size_t i = 0; i < std::tuple_size<decltype(m_Value)>::value; i++)
+                for(size_t i = 0; i < std::tuple_size< tuple<TVals...> >::value; i++)
                 {
                     json_t* pVal = NULL;
-                    auto temp = std::get<i>(*m_Value);
                     
-                    if(typeid(decltype(temp)) == typeid(bool))
+
+                    // cout << "data @ " << pTemp<< " = "<< *pTemp << endl;
+                    if(is_type<0, bool, TVals...>(*m_Value, i))
                     {
-                        CJSONValueBool tjson("", &temp);
+                        auto* pTemp = pull<0, bool, TVals...>(*m_Value, i);
+                        CJSONValueBool tjson("", pTemp);
                         bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
                     }
-                    else if(typeid(decltype(temp)) == typeid(int))
+                    else if(is_type<0, int, TVals...>(*m_Value, i))
                     {
-                        CJSONValueInt tjson("", &temp);
+                        auto* pTemp = pull<0, int, TVals...>(*m_Value, i);
+                        CJSONValueInt tjson("", pTemp);
                         bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
                     }
-                    else if(typeid(decltype(temp)) == typeid(double) ||
-                            typeid(decltype(temp)) == typeid(float) )
+                    else if(is_type<0, double, TVals...>(*m_Value, i) ||
+                            is_type<0, float, TVals...>(*m_Value, i) )
                     {
-                        CJSONValueFloat tjson("", &temp);
+                        auto* pTemp = pull<0, double, TVals...>(*m_Value, i);
+                        CJSONValueFloat tjson("", pTemp);
                         bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
                     }
-                    else if(typeid(decltype(temp)) == typeid(string))
+                    else if(is_type<0, string, TVals...>(*m_Value, i))
                     {
-                        CJSONValueString tjson("", &temp);
+                        auto* pTemp = pull<0, string, TVals...>(*m_Value, i);
+                        CJSONValueString tjson("", pTemp);
                         bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
                     }
                     else{
+                        cout << "Error could not match data type array element. " << m_name << "[" << i << "]" << endl;
                         pVal = NULL;
                     }
                     
                     if(pVal)
                         bDumpSuccess = (json_array_append(pRet, pVal) != -1) && bDumpSuccess;
                     else
-                        cout << "Error could not dump array element. "<< ((*m_Value)[i]) << endl;
+                        cout << "Error could not dump array element. " << m_name << "[" << i << "]" << endl;
+            
                 }
             }
             else
@@ -385,6 +515,7 @@ class CJSONValueTuple : public CJSONValue
     
     private:
         tuple<TVals...>* m_Value;
+        //vector<type_info> m_Types;
 };
 
 #endif
@@ -413,9 +544,12 @@ class CJSONValueObject : public CJSONValue
         }
     
     // Inherited Abstract Methods.
-        bool Parse (const json_t* pVal)
+        virtual bool Parse (const json_t* pVal)
         {
             bool bParseSucess = true;
+            
+            
+            cout << "Calling CJSONValueObject::Parse" << endl;
             
             json_t* data;
             map<string, CJSONValue* >::iterator iter;
@@ -428,8 +562,9 @@ class CJSONValueObject : public CJSONValue
             return bParseSucess;
         }
     
-        bool Dump (json_t*& pRet)
+        virtual bool Dump (json_t*& pRet)
         {
+            cout << "Calling CJSONValueObject::Dump" << endl;
             bool bDumpSuccess = true;
             
             pRet = json_object();
@@ -480,6 +615,10 @@ class CJSONValueObject : public CJSONValue
         void AddIntegerValue(const string& name, int* pval)
         {
             m_Map.insert(pair<string, CJSONValue* >(name,  new CJSONValueInt(name, pval)));
+        }
+        void AddUIntegerValue(const string& name, size_t* pval)
+        {
+            m_Map.insert(pair<string, CJSONValue* >(name,  new CJSONValueUInt(name, pval)));
         }
         void AddBoolValue(const string& name, bool* pval)
         {
@@ -555,6 +694,13 @@ class CJSONParser
             // cout << "object data = " << object_data << endl;
             bParseSuccess = pOject->Parse(object_data);
             
+            return bParseSuccess;
+        }
+    
+        bool ParseObject(CJSONValueObject* pOject)
+        {
+            bool bParseSuccess = false;
+            bParseSuccess = pOject->Parse(m_pRoot);
             return bParseSuccess;
         }
     
