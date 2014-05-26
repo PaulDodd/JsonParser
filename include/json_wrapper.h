@@ -26,6 +26,9 @@
 using namespace std;
 
 
+// TODO: make it so that numerical values can be used for any of the json number classes but at the risk of the user losing data.
+// this will make certian use cases possible and puts the responsibilty to use the proper data type on the user.
+
 namespace json {
 
 class CJSONValue
@@ -245,7 +248,7 @@ class CJSONValueArray : public CJSONValue
                     TVal temp;
                     char array_number[30]; // should be enough space.
                     sprintf(&array_number[0], "-%zu", i);
-                    JVal tjson(m_name + string(array_number), &temp);
+                    JVal tjson((m_name + string(array_number)), &temp);
                     data = json_array_get(pVal, i);
                     bParseSuccess = tjson.Parse(data) && bParseSuccess;
                     
