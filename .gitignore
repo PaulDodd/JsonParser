@@ -1,3 +1,6 @@
+#Mac-OS System files
+.DS_Store
+
 # Compiled Object files
 *.slo
 *.lo
