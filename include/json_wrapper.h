@@ -62,7 +62,7 @@ class CJSONValue
 class CJSONValueInt : public CJSONValue // may need an unsigned version of this class.
 {
     public:
-        CJSONValueInt(const string& name, int * pval) : CJSONValue(JSON_INTEGER, name), m_Value(pval) {}
+        CJSONValueInt(const string& name, int * pval) : CJSONValue(JSON_INTEGER, name), m_pValue(pval) {}
         ~CJSONValueInt() {}
     
     // Overloaded Methods
@@ -72,7 +72,7 @@ class CJSONValueInt : public CJSONValue // may need an unsigned version of this 
             if(json_is_integer(pVal))
             {
                 // cout << "JSON integer found" << endl;
-                *m_Value = json_integer_value(pVal);
+                *m_pValue = json_integer_value(pVal);
             }
             else{
                 fprintf(stderr, "ERROR: %s is not an integer as expected.", m_name.c_str());
@@ -82,21 +82,21 @@ class CJSONValueInt : public CJSONValue // may need an unsigned version of this 
     
         bool Dump (json_t*& pRet)
         {
-            pRet = json_integer(*m_Value);
+            pRet = json_integer(*m_pValue);
             return pRet != NULL;
         }
     
     // Accessor Methods
-        const int& GetValue() const { return *m_Value; }
+        const int& GetValue() const { return *m_pValue; }
     
     private:
-        int* m_Value;
+        int* m_pValue;
 };
 
 class CJSONValueUInt : public CJSONValue // may need an unsigned version of this class.
 {
     public:
-        CJSONValueUInt(const string& name, size_t* pval) : CJSONValue(JSON_INTEGER, name), m_Value(pval) {}
+        CJSONValueUInt(const string& name, size_t* pval) : CJSONValue(JSON_INTEGER, name), m_pValue(pval) {}
         ~CJSONValueUInt() {}
     
     // Overloaded Methods
@@ -106,7 +106,7 @@ class CJSONValueUInt : public CJSONValue // may need an unsigned version of this
             if(json_is_integer(pVal))
             {
                 // cout << "JSON integer found" << endl;
-                *m_Value = json_integer_value(pVal);
+                *m_pValue = json_integer_value(pVal);
             }
             else{
                 fprintf(stderr, "ERROR: %s is not an integer as expected.", m_name.c_str());
@@ -116,21 +116,21 @@ class CJSONValueUInt : public CJSONValue // may need an unsigned version of this
     
         bool Dump (json_t*& pRet)
         {
-            pRet = json_integer(*m_Value);
+            pRet = json_integer(*m_pValue);
             return pRet != NULL;
         }
     
     // Accessor Methods
-        const size_t& GetValue() const { return *m_Value; }
+        const size_t& GetValue() const { return *m_pValue; }
     
     private:
-        size_t* m_Value;
+        size_t* m_pValue;
 };
 
 class CJSONValueFloat : public CJSONValue
 {
     public:
-        CJSONValueFloat(const string& name, double* pval) : CJSONValue(JSON_REAL, name), m_Value(pval) {}
+        CJSONValueFloat(const string& name, double* pval) : CJSONValue(JSON_REAL, name), m_pValue(pval) {}
         ~CJSONValueFloat() {}
     
         bool Parse (const json_t* pVal)
@@ -139,7 +139,7 @@ class CJSONValueFloat : public CJSONValue
             if(json_is_real(pVal))
             {
                 // cout << "JSON real found" << endl;
-                *m_Value = json_real_value(pVal);
+                *m_pValue = json_real_value(pVal);
             }
             else{
                 fprintf(stderr, "ERROR: %s is not an floating point number as expected.", m_name.c_str());
@@ -149,19 +149,19 @@ class CJSONValueFloat : public CJSONValue
     
         bool Dump (json_t*& pRet)
         {
-            pRet = json_real(*m_Value);
+            pRet = json_real(*m_pValue);
             return pRet != NULL;
         }
     
-        const double& GetValue() const { return *m_Value; }
+        const double& GetValue() const { return *m_pValue; }
     private:
-        double* m_Value;
+        double* m_pValue;
 };
 
 class CJSONValueString : public CJSONValue
 {
     public:
-        CJSONValueString(const string& name, string* pval) : CJSONValue(JSON_STRING, name), m_Value(pval) {}
+        CJSONValueString(const string& name, string* pval) : CJSONValue(JSON_STRING, name), m_pValue(pval) {}
         ~CJSONValueString() {}
     
         bool Parse (const json_t* pVal)
@@ -170,7 +170,7 @@ class CJSONValueString : public CJSONValue
             if(json_is_string(pVal))
             {
                 // cout << "JSON string found" << endl;
-                *m_Value = json_string_value(pVal);
+                *m_pValue = json_string_value(pVal);
             }
             else{
                 fprintf(stderr, "ERROR: %s is not an string as expected.", m_name.c_str());
@@ -180,20 +180,20 @@ class CJSONValueString : public CJSONValue
     
         bool Dump (json_t*& pRet)
         {
-            pRet = json_string(m_Value->c_str());
+            pRet = json_string(m_pValue->c_str());
             if(!pRet) cout << "Error could not dump string " << m_name << endl;
             return pRet != NULL;
         }
     
-        const string& GetValue() const { return *m_Value; }
+        const string& GetValue() const { return *m_pValue; }
     private:
-        string* m_Value;
+        string* m_pValue;
 };
 
 class CJSONValueBool : public CJSONValue
 {
     public:
-        CJSONValueBool(const string& name, bool * pval) : CJSONValue(JSON_STRING, name), m_Value(pval) {}
+        CJSONValueBool(const string& name, bool * pval) : CJSONValue(JSON_STRING, name), m_pValue(pval) {}
         ~CJSONValueBool() {}
     
         bool Parse (const json_t* pVal)
@@ -202,7 +202,7 @@ class CJSONValueBool : public CJSONValue
             if(json_is_boolean(pVal))
             {
                 // cout << "JSON boolean found" << endl;
-                *m_Value = json_is_true(pVal);
+                *m_pValue = json_is_true(pVal);
             }
             else{
                 fprintf(stderr, "ERROR: %s is not a boolean as expected.", m_name.c_str());
@@ -212,13 +212,15 @@ class CJSONValueBool : public CJSONValue
     
         bool Dump (json_t*& pRet)
         {
-            pRet = m_Value ? json_true() : json_false();
+//            cout << "boolean value = " << boolalpha << *m_pValue << " @ " << m_pValue << " -> "<< pRet << endl;
+            pRet = (*m_pValue) ? json_true() : json_false();
+//            cout << "json boolean value @ " << pRet << endl;
             return pRet != NULL;
         }
     
-        const bool& GetValue() const { return *m_Value; }
+        const bool& GetValue() const { return *m_pValue; }
     private:
-        bool* m_Value;
+        bool* m_pValue;
 };
 
 
@@ -229,7 +231,7 @@ template <class TVal, class JVal>
 class CJSONValueArray : public CJSONValue
 {
     public:
-        CJSONValueArray(const string& name, vector<TVal>* pval) : CJSONValue(JSON_ARRAY, name), m_Value(pval) {}
+        CJSONValueArray(const string& name, vector<TVal>* pval) : CJSONValue(JSON_ARRAY, name), m_pValue(pval) {}
         ~CJSONValueArray() {}
     
         bool Parse (const json_t* pVal)
@@ -252,7 +254,7 @@ class CJSONValueArray : public CJSONValue
                     data = json_array_get(pVal, i);
                     bParseSuccess = tjson.Parse(data) && bParseSuccess;
                     
-                    m_Value->push_back(temp);
+                    m_pValue->push_back(temp);
                 }
             }
             else{
@@ -268,14 +270,16 @@ class CJSONValueArray : public CJSONValue
             pRet = json_array();
             if(pRet)
             {
-                for( size_t i = 0; i < m_Value->size(); i++)
+                for( size_t i = 0; i < m_pValue->size(); i++)
                 {
                     json_t* pVal = NULL;
-                    JVal tjson("", &((*m_Value)[i]));
+                    TVal temp = m_pValue->at(i);
                     
-                    cout << "pVal @ " << pVal << endl;
+                    JVal tjson("", &temp);
+                    
+                    // cout << "pVal @ " << pVal << endl;
                     bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
-                    cout << "pVal @ " << pVal << endl;
+                    // cout << "pVal @ " << pVal << endl;
                     
                     if(pVal)
                         bDumpSuccess = (json_array_append(pRet, pVal) != -1) && bDumpSuccess;
@@ -292,9 +296,9 @@ class CJSONValueArray : public CJSONValue
             return bDumpSuccess;
         }
     
-        const TVal& GetValue() const { return *m_Value; }
+        const TVal& GetValue() const { return *m_pValue; }
     private:
-        vector<TVal>* m_Value;
+        vector<TVal>* m_pValue;
 };
 
 
@@ -395,7 +399,7 @@ template<typename... TVals>
 class CJSONValueTuple : public CJSONValue
 {
     public:
-        CJSONValueTuple(const string& name, tuple<TVals...>* pval) : CJSONValue(JSON_ARRAY, name), m_Value(pval) {}
+        CJSONValueTuple(const string& name, tuple<TVals...>* pval) : CJSONValue(JSON_ARRAY, name), m_pValue(pval) {}
     
     // Overloaded Methods
         bool Parse (const json_t* pVal)
@@ -419,29 +423,29 @@ class CJSONValueTuple : public CJSONValue
                         bool temp;
                         CJSONValueBool jtemp(elemName, &temp);
                         jtemp.Parse(data);
-                        // std::get<i>(*m_Value) = temp;
-                        put<0, bool, TVals...>(*m_Value, temp, i);
+                        // std::get<i>(*m_pValue) = temp;
+                        put<0, bool, TVals...>(*m_pValue, temp, i);
                     }
                     else if(json_is_integer(data))
                     {
                         int temp;
                         CJSONValueInt jtemp(elemName, &temp);
                         jtemp.Parse(data);
-                        put<0, int, TVals...>(*m_Value, temp, i);
+                        put<0, int, TVals...>(*m_pValue, temp, i);
                     }
                     else if(json_is_real(data))
                     {
                         double temp;
                         CJSONValueFloat jtemp(elemName, &temp);
                         jtemp.Parse(data);
-                        put<0, double, TVals...>(*m_Value, temp, i);
+                        put<0, double, TVals...>(*m_pValue, temp, i);
                     }
                     else if(json_is_string(data))
                     {
                         string temp;
                         CJSONValueString jtemp(elemName, &temp);
                         jtemp.Parse(data);
-                        put<0, string, TVals...>(*m_Value, temp, i);
+                        put<0, string, TVals...>(*m_pValue, temp, i);
                     }
                     else{
                         bParseSuccess = false;
@@ -469,28 +473,28 @@ class CJSONValueTuple : public CJSONValue
                     
 
                     // cout << "data @ " << pTemp<< " = "<< *pTemp << endl;
-                    if(is_type<0, bool, TVals...>(*m_Value, i))
+                    if(is_type<0, bool, TVals...>(*m_pValue, i))
                     {
-                        auto* pTemp = pull<0, bool, TVals...>(*m_Value, i);
+                        auto* pTemp = pull<0, bool, TVals...>(*m_pValue, i);
                         CJSONValueBool tjson("", pTemp);
                         bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
                     }
-                    else if(is_type<0, int, TVals...>(*m_Value, i))
+                    else if(is_type<0, int, TVals...>(*m_pValue, i))
                     {
-                        auto* pTemp = pull<0, int, TVals...>(*m_Value, i);
+                        auto* pTemp = pull<0, int, TVals...>(*m_pValue, i);
                         CJSONValueInt tjson("", pTemp);
                         bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
                     }
-                    else if(is_type<0, double, TVals...>(*m_Value, i) ||
-                            is_type<0, float, TVals...>(*m_Value, i) )
+                    else if(is_type<0, double, TVals...>(*m_pValue, i) ||
+                            is_type<0, float, TVals...>(*m_pValue, i) )
                     {
-                        auto* pTemp = pull<0, double, TVals...>(*m_Value, i);
+                        auto* pTemp = pull<0, double, TVals...>(*m_pValue, i);
                         CJSONValueFloat tjson("", pTemp);
                         bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
                     }
-                    else if(is_type<0, string, TVals...>(*m_Value, i))
+                    else if(is_type<0, string, TVals...>(*m_pValue, i))
                     {
-                        auto* pTemp = pull<0, string, TVals...>(*m_Value, i);
+                        auto* pTemp = pull<0, string, TVals...>(*m_pValue, i);
                         CJSONValueString tjson("", pTemp);
                         bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
                     }
@@ -517,7 +521,7 @@ class CJSONValueTuple : public CJSONValue
     
     
     private:
-        tuple<TVals...>* m_Value;
+        tuple<TVals...>* m_pValue;
         //vector<type_info> m_Types;
 };
 
@@ -552,7 +556,7 @@ class CJSONValueObject : public CJSONValue
             bool bParseSucess = true;
             
             
-            cout << "Calling CJSONValueObject::Parse" << endl;
+            // cout << "Calling CJSONValueObject::Parse" << endl;
             
             json_t* data;
             map<string, CJSONValue* >::iterator iter;
@@ -567,12 +571,12 @@ class CJSONValueObject : public CJSONValue
     
         virtual bool Dump (json_t*& pRet)
         {
-            cout << "Calling CJSONValueObject::Dump" << endl;
+            //cout << "Calling CJSONValueObject::Dump" << endl;
             bool bDumpSuccess = true;
             
             pRet = json_object();
             
-            cout << "Dumping object " << m_name << " @ " << pRet << endl;
+            //cout << "Dumping object " << m_name << " @ " << pRet << endl;
             
             if(pRet)
             {
@@ -659,7 +663,7 @@ class CJSONParser
     public:
         CJSONParser() : m_pRoot(NULL)
         {
-            cout << "json parser created." << endl;
+            // cout << "json parser created." << endl;
             m_Flags = JSON_INDENT(4);
         }
     
