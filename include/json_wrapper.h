@@ -88,6 +88,7 @@ class CJSONValueInt : public CJSONValue // may need an unsigned version of this 
     
     // Accessor Methods
         const int& GetValue() const { return *m_pValue; }
+        const int& GetDefaultValue() const { return m_DefaultValue; }
     
     private:
         int  m_DefaultValue;
@@ -123,7 +124,7 @@ class CJSONValueUInt : public CJSONValue // may need an unsigned version of this
     
     // Accessor Methods
         const size_t& GetValue() const { return *m_pValue; }
-    
+        const size_t& GetDefaultValue() const { return m_DefaultValue; }
     private:
         size_t  m_DefaultValue;
         size_t* m_pValue;
@@ -156,6 +157,7 @@ class CJSONValueFloat : public CJSONValue
         }
     
         const double& GetValue() const { return *m_pValue; }
+        const double& GetDefaultValue() const { return m_DefaultValue; }
     private:
         double  m_DefaultValue;
         double* m_pValue;
@@ -189,6 +191,8 @@ class CJSONValueString : public CJSONValue
         }
     
         const string& GetValue() const { return *m_pValue; }
+        const string& GetDefaultValue() const { return m_DefaultValue; }
+    
     private:
         string  m_DefaultValue;
         string* m_pValue;
@@ -223,6 +227,8 @@ class CJSONValueBool : public CJSONValue
         }
     
         const bool& GetValue() const { return *m_pValue; }
+        const bool& GetDefaultValue() const { return m_DefaultValue; }
+    
     private:
         bool  m_DefaultValue;
         bool* m_pValue;
@@ -237,7 +243,14 @@ template <class TVal, class JVal>
 class CJSONValueArray : public CJSONValue
 {
     public:
-        CJSONValueArray(const string& name, vector<TVal>* pval, const TVal& defaultVal) : CJSONValue(JSON_ARRAY, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
+        CJSONValueArray(const string& name, vector<TVal>* pval, const vector<TVal>& defaultVal = vector<TVal>()) : CJSONValue(JSON_ARRAY, name), m_pValue(pval), m_DefaultValue(defaultVal)
+        {
+            cout << "Initializing CJSONValueArray " << name << " @ "<< pval << endl;
+            JVal temp("", nullptr);
+            cout << "Initializing CJSONValueArray " << name << " @ "<< pval << endl;
+            
+            m_DefaultArrayValue = temp.GetDefaultValue();
+        }
     
         CJSONValueArray(const CJSONValueArray& src ) : CJSONValue(JSON_ARRAY, src.GetName())
         {
@@ -260,7 +273,7 @@ class CJSONValueArray : public CJSONValue
                 
                 for (size_t i = 0; i < n; i++)
                 {
-                    TVal temp = m_DefaultValue;
+                    TVal temp = m_DefaultArrayValue;
                     
                     char array_number[30]; // should be enough space.
                     sprintf(&array_number[0], "-%zu", i);
@@ -319,10 +332,11 @@ class CJSONValueArray : public CJSONValue
     
     // Accessor Methods
         const TVal& GetValue() const { return *m_pValue; }
-        const TVal GetDefaultValue() const { return m_DefaultValue; }
+        const vector<TVal>& GetDefaultValue() const { return m_DefaultValue; }
     private:
         vector<TVal>*   m_pValue;
-        TVal            m_DefaultValue;
+        vector<TVal>    m_DefaultValue;
+        TVal            m_DefaultArrayValue;
 };
 
 
@@ -423,7 +437,7 @@ template<typename... TVals>
 class CJSONValueTuple : public CJSONValue
 {
     public:
-        CJSONValueTuple(const string& name, tuple<TVals...>* pval) : CJSONValue(JSON_ARRAY, name), m_pValue(pval) {}
+        CJSONValueTuple(const string& name, tuple<TVals...>* pval, const tuple<TVals...>& defaultVal = tuple<TVals...>()) : CJSONValue(JSON_ARRAY, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
     
     // Overloaded Methods
         bool Parse (const json_t* pVal)
@@ -543,12 +557,14 @@ class CJSONValueTuple : public CJSONValue
             return bDumpSuccess;
         }
     
+    
+        const tuple<TVals...>& GetDefaultValue() { return m_DefaultValue; }
     private:
-        tuple<TVals...>* m_pValue;
+        tuple<TVals...>*    m_pValue;
+        tuple<TVals...>     m_DefaultValue;
 };
 
 #endif
-
 class CJSONValueObject : public CJSONValue
 {
     public:
@@ -637,10 +653,10 @@ class CJSONValueObject : public CJSONValue
         virtual void SetupJSONObject() = 0;
     
     // Class methods
-        template<class TVal, class JVal, class DVal>
-        void AddNameValuePair(const string& name, TVal* pval, const DVal& defaultVal)
+        template<class TVal, class JVal>
+        void AddNameValuePair(const string& name, TVal* pval)
         {
-            m_Map.insert( pair< string, CJSONValue* >(name, new JVal(name, pval, defaultVal)));
+            m_Map.insert( pair< string, CJSONValue* >(name, new JVal(name, pval)));
         }
     
         // Could Remove the following becasuse of the encompassing method above.
@@ -662,7 +678,7 @@ class CJSONValueObject : public CJSONValue
         }
         void AddStringArrayValue(const string& name, vector<string>* pval)
         {
-            m_Map.insert(pair<string, CJSONValue* >(name,  new CJSONValueArray<string, CJSONValueString>(name, pval, "")));
+            m_Map.insert(pair<string, CJSONValue* >(name,  new CJSONValueArray<string, CJSONValueString>(name, pval)));
         }
     
         void AddObjectValue(const string& name, CJSONValueObject* pval)
@@ -670,7 +686,8 @@ class CJSONValueObject : public CJSONValue
             m_Map.insert(pair<string, CJSONValue* >(name,  pval));
         }
     
-        CJSONValueObject* GetDerived() { return m_pDerived; }
+        CJSONValueObject* GetDerived()  { return m_pDerived; }
+        const CJSONValueObject& GetDefaultValue()   { return *m_pDerived; }
     
     private:
         CJSONValueObject*                               m_pDerived;         // ?? remove this ??
@@ -696,15 +713,18 @@ template< typename TVal, typename JVal>
 class CJSONValuePointer : public CJSONValue
 {
     public:
-        CJSONValuePointer(const string& name, TVal** pval) : CJSONValue(JSON_NULL, name), m_pValue(pval), m_pJson(nullptr)
+        CJSONValuePointer(const string& name, TVal** pval, TVal* defaultVal = nullptr) : CJSONValue(JSON_NULL, name), m_pValue(pval), m_pJson(nullptr), m_DefaultValue(defaultVal)
         {
-            cout << "Pointer @"<<*m_pValue<<endl;
-            if(!*m_pValue)
+            if(m_pValue)
             {
-                (*m_pValue) = new TVal; // must have default constructor.
+                cout << "Pointer @"<<*m_pValue<<endl;
+                if(!*m_pValue)
+                {
+                    (*m_pValue) = new TVal; // must have default constructor.
+                }
+                
+                m_pJson = new JVal(name, (*m_pValue)); // delete in the desctructor.
             }
-            
-            m_pJson = new JVal(name, (*m_pValue)); // delete in the desctructor.
         }
     
     // Destructor.
@@ -728,9 +748,10 @@ class CJSONValuePointer : public CJSONValue
     
     // Accessor Methods
         const TVal* GetValue() const { return *m_pValue; }
-    
+        TVal* GetDefaultValue() const { return m_DefaultValue; }
     private:
         TVal**      m_pValue;
+        TVal*       m_DefaultValue;
         JVal*       m_pJson;
 };
 
@@ -739,17 +760,20 @@ template< typename TVal>
 class CJSONValuePointer<TVal, CJSONValueObject> : public CJSONValue
 {
     public:
-        CJSONValuePointer(const string& name, TVal** pval) : CJSONValue(JSON_NULL, name), m_pValue(pval), m_pJson(nullptr)
+        CJSONValuePointer(const string& name, TVal** pval, TVal* defaultVal = nullptr) : CJSONValue(JSON_NULL, name), m_pValue(pval), m_pJson(nullptr), m_DefaultValue(defaultVal)
         {
-            cout << "Pointer to JSON object detected @ " << *m_pValue << endl;
-            
-            if(!*m_pValue)
+            if(m_pValue)
             {
-                (*m_pValue) = new TVal; // must have default constructor.
+                cout << "Pointer to JSON object detected @ " << *m_pValue << endl;
+                
+                if(!*m_pValue)
+                {
+                    (*m_pValue) = new TVal; // must have default constructor.
+                }
+                
+                (*m_pValue)->SetupJSONObject();
+                m_pJson = (*m_pValue);
             }
-            
-            (*m_pValue)->SetupJSONObject();
-            m_pJson = (*m_pValue);
 
         }
     
@@ -772,9 +796,11 @@ class CJSONValuePointer<TVal, CJSONValueObject> : public CJSONValue
     
     // Accessor Methods
         const TVal* GetValue() const { return *m_pValue; }
+        TVal* GetDefaultValue() const { return m_DefaultValue; }
     
     private:
         TVal**                  m_pValue;
+        TVal*                   m_DefaultValue;
         CJSONValueObject*       m_pJson;
 };
 
