@@ -1,8 +1,26 @@
 
 
 #include "json_wrapper.h"
-#include "../../folding/SharedFiles/includes/Network.h"
 
+
+class TestClass : public json::CJSONValueObject  // inherit the JSON Object for file parsing.
+{
+    public:
+        TestClass() : CJSONValueObject("", this), testInt(0), testString("") {}
+    
+        TestClass(int i, string s) : CJSONValueObject("", this), testInt(i), testString(s) {}
+    
+        void SetupJSONObject()
+        {
+            cout << "TestClass::SetupJSONObject"<<endl;
+            AddIntegerValue("obj_test_int", &testInt);
+            AddStringValue("obj_test_string", &testString);
+        }
+    
+    private:
+        int testInt;
+        string testString;
+};
 
 class tabular : public json::CJSONValueObject  // inherit the JSON Object for file parsing.
 {
@@ -11,12 +29,48 @@ class tabular : public json::CJSONValueObject  // inherit the JSON Object for fi
         {
             length = 0;
             bUseSpace = false;
+
+        }
+        ~tabular()
+        {
+            for(size_t i = 0; i < vec.size(); i++)
+                delete vec[i];
+            vec.clear();
+            
+            for(size_t i = 0; i < vec2.size(); i++)
+                delete vec2[i];
+            vec2.clear();
         }
     
-        void SetupJSONObject() // All th code you have to add to parse the file for this object!!!!
+        void SetupJSONObject() // All the code you have to add to parse the file for this object!!!!
         {
+            cout << "tabular::SetupJSONObject"<<endl;
             this->AddIntegerValue("length", &length);
             this->AddBoolValue("use_space", &bUseSpace);
+            
+            // ok there are quite a few template parameters.
+            AddNameValuePair<   std::vector<int*>,
+                                json::CJSONValueArray<  int*,
+                                                        json::CJSONValuePointer<    int,
+                                                                                    json::CJSONValueInt > > >("IntPointerArray", &vec, nullptr);
+            AddNameValuePair<   std::vector<TestClass*>,
+                                json::CJSONValueArray<  TestClass*,
+                                                        json::CJSONValuePointer<    TestClass,
+                                                                                    json::CJSONValueObject > > >("ObjectPointerArray", &vec2, nullptr);
+        }
+    
+        void AllocateSomeMem()
+        {
+            char str[12] = "test_string";
+            for ( size_t i = 0; i < 10; i++)
+            {
+                int* pInt = new int;
+                *pInt = int(i);
+                vec.push_back(pInt);
+                
+                TestClass* pTest = new TestClass(i, string(&str[i]));
+                vec2.push_back(pTest);
+            }
         }
     
         void Print()
@@ -25,8 +79,10 @@ class tabular : public json::CJSONValueObject  // inherit the JSON Object for fi
         }
     
     private:
-        int     length;
-        bool    bUseSpace;
+        int                     length;
+        bool                    bUseSpace;
+        vector<int*>            vec;
+        vector<TestClass*>      vec2;
     
 };
 
@@ -51,13 +107,11 @@ class test : public json::CJSONValueObject
     
         bool LoadFromFile(const string& Path)
         {
+            cout << "test::LoadFromFile"<<endl;
             json::CJSONParser json;
             json.LoadFromFile(Path);    // opens the JSON file and loads the data into buffer.
-            if(json.IsRootArray())      // expecting an array of objects
-            {
-                json.ParseObjectFromArray(0, this); // Parses all the data for this object.
-            }
-            return true;
+            
+            return json.ParseObject(this); // Parses all the data for this object.
         }
         bool DumpToFile(const string& Path)
         {
@@ -76,6 +130,10 @@ class test : public json::CJSONValueObject
             }
             tabConfig.Print();
         }
+        void AllocateSomeMem()
+        {
+            tabConfig.AllocateSomeMem();
+        }
     
     private:
         string          encoding;
@@ -87,33 +145,12 @@ class test : public json::CJSONValueObject
 int main(int argc, const char * argv[])
 {
     test newtest("test.json");
+    newtest.AllocateSomeMem();
     newtest.Print();
     if(!newtest.DumpToFile("dump.json"))
     {
         cout << "Error dumping the file." << endl;
     }
-    
-    
-    tuple<int, string> myTuple(10, "10");
-    int x = 10;
-    auto y = x+1;
-    auto z = std::get<0>(myTuple);
-
-    
-    cout << (typeid(y) == typeid(x) ? "True" : "False") << endl;
-    cout << (typeid(y) == typeid(double) ? "True" : "False") << endl;
-    cout << (typeid(z) == typeid(int) ? "True" : "False") << endl;
-    
-    Network::CNetwork net(10, (Network::Simple | Network::Directed));
-    net.AddEdge(0, 2);
-    net.AddEdge(3, 2);
-    net.AddEdge(3, 5);
-    
-    net.DumpToFile("network.json");
-    
-    Network::CNetwork net2;
-    net2.LoadFromFile("network.json");
-    net2.PrintNetwork();
     
     return 0;
 }

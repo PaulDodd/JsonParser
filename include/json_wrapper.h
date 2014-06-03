@@ -25,11 +25,11 @@
 
 using namespace std;
 
-
-// TODO: make it so that numerical values can be used for any of the json number classes but at the risk of the user losing data.
-// this will make certian use cases possible and puts the responsibilty to use the proper data type on the user.
-
 namespace json {
+
+// TODO: make general numerical class with template. and that all numerical classes are compatible.
+// this will make certian use cases possible and code more flexible.
+
 
 class CJSONValue
 {
@@ -62,7 +62,7 @@ class CJSONValue
 class CJSONValueInt : public CJSONValue // may need an unsigned version of this class.
 {
     public:
-        CJSONValueInt(const string& name, int * pval) : CJSONValue(JSON_INTEGER, name), m_pValue(pval) {}
+        CJSONValueInt(const string& name, int * pval, const int& defaultVal = 0) : CJSONValue(JSON_INTEGER, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
         ~CJSONValueInt() {}
     
     // Overloaded Methods
@@ -90,13 +90,14 @@ class CJSONValueInt : public CJSONValue // may need an unsigned version of this 
         const int& GetValue() const { return *m_pValue; }
     
     private:
+        int  m_DefaultValue;
         int* m_pValue;
 };
 
 class CJSONValueUInt : public CJSONValue // may need an unsigned version of this class.
 {
     public:
-        CJSONValueUInt(const string& name, size_t* pval) : CJSONValue(JSON_INTEGER, name), m_pValue(pval) {}
+        CJSONValueUInt(const string& name, size_t* pval, const size_t& defaultVal = 0) : CJSONValue(JSON_INTEGER, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
         ~CJSONValueUInt() {}
     
     // Overloaded Methods
@@ -124,13 +125,14 @@ class CJSONValueUInt : public CJSONValue // may need an unsigned version of this
         const size_t& GetValue() const { return *m_pValue; }
     
     private:
+        size_t  m_DefaultValue;
         size_t* m_pValue;
 };
 
 class CJSONValueFloat : public CJSONValue
 {
     public:
-        CJSONValueFloat(const string& name, double* pval) : CJSONValue(JSON_REAL, name), m_pValue(pval) {}
+        CJSONValueFloat(const string& name, double* pval, const double& defaultVal = 0.0) : CJSONValue(JSON_REAL, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
         ~CJSONValueFloat() {}
     
         bool Parse (const json_t* pVal)
@@ -155,13 +157,14 @@ class CJSONValueFloat : public CJSONValue
     
         const double& GetValue() const { return *m_pValue; }
     private:
+        double  m_DefaultValue;
         double* m_pValue;
 };
 
 class CJSONValueString : public CJSONValue
 {
     public:
-        CJSONValueString(const string& name, string* pval) : CJSONValue(JSON_STRING, name), m_pValue(pval) {}
+        CJSONValueString(const string& name, string* pval, const string& defaultVal = "") : CJSONValue(JSON_STRING, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
         ~CJSONValueString() {}
     
         bool Parse (const json_t* pVal)
@@ -187,13 +190,14 @@ class CJSONValueString : public CJSONValue
     
         const string& GetValue() const { return *m_pValue; }
     private:
+        string  m_DefaultValue;
         string* m_pValue;
 };
 
 class CJSONValueBool : public CJSONValue
 {
     public:
-        CJSONValueBool(const string& name, bool * pval) : CJSONValue(JSON_STRING, name), m_pValue(pval) {}
+        CJSONValueBool(const string& name, bool * pval, const bool& defaultVal = false) : CJSONValue(JSON_STRING, name), m_pValue(pval), m_DefaultValue(defaultVal)  {}
         ~CJSONValueBool() {}
     
         bool Parse (const json_t* pVal)
@@ -220,18 +224,27 @@ class CJSONValueBool : public CJSONValue
     
         const bool& GetValue() const { return *m_pValue; }
     private:
+        bool  m_DefaultValue;
         bool* m_pValue;
 };
-
 
 // Will have to think about how to make this work for fixed array types of containers.
 // Implemeted to work with the std::vector class for ease.
 // ?? Could/Should make a CJSONValueFixedArray<> class and change the name of this class to be CJSONValueDynamicArray or CJSONValueVector ??
+// TVal is object then we will need to call the SetupObjectClass.
+
 template <class TVal, class JVal>
 class CJSONValueArray : public CJSONValue
 {
     public:
-        CJSONValueArray(const string& name, vector<TVal>* pval) : CJSONValue(JSON_ARRAY, name), m_pValue(pval) {}
+        CJSONValueArray(const string& name, vector<TVal>* pval, const TVal& defaultVal) : CJSONValue(JSON_ARRAY, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
+    
+        CJSONValueArray(const CJSONValueArray& src ) : CJSONValue(JSON_ARRAY, src.GetName())
+        {
+            cout << "Copy constructor called" << endl;
+            CopyFrom(src);
+        }
+    
         ~CJSONValueArray() {}
     
         bool Parse (const json_t* pVal)
@@ -247,7 +260,8 @@ class CJSONValueArray : public CJSONValue
                 
                 for (size_t i = 0; i < n; i++)
                 {
-                    TVal temp;
+                    TVal temp = m_DefaultValue;
+                    
                     char array_number[30]; // should be enough space.
                     sprintf(&array_number[0], "-%zu", i);
                     JVal tjson((m_name + string(array_number)), &temp);
@@ -296,9 +310,19 @@ class CJSONValueArray : public CJSONValue
             return bDumpSuccess;
         }
     
+    
+        const CJSONValueArray& CopyFrom( const CJSONValueArray& src )
+        {
+           m_pValue = &src.GetValue();
+           m_DefaultValue = src.GetDefaultValue();
+        }
+    
+    // Accessor Methods
         const TVal& GetValue() const { return *m_pValue; }
+        const TVal GetDefaultValue() const { return m_DefaultValue; }
     private:
-        vector<TVal>* m_pValue;
+        vector<TVal>*   m_pValue;
+        TVal            m_DefaultValue;
 };
 
 
@@ -519,10 +543,8 @@ class CJSONValueTuple : public CJSONValue
             return bDumpSuccess;
         }
     
-    
     private:
         tuple<TVals...>* m_pValue;
-        //vector<type_info> m_Types;
 };
 
 #endif
@@ -563,7 +585,10 @@ class CJSONValueObject : public CJSONValue
             for(iter = m_Map.begin(); iter != m_Map.end(); iter++)
             {
                 data = json_object_get(pVal, iter->first.c_str());
-                bParseSucess = iter->second->Parse(data) && bParseSucess;
+                if(data)
+                    bParseSucess = iter->second->Parse(data) && bParseSucess;
+                else
+                    cout << "Key (" << iter->first << ") was not found in file." << endl;
             }
             
             return bParseSucess;
@@ -612,10 +637,10 @@ class CJSONValueObject : public CJSONValue
         virtual void SetupJSONObject() = 0;
     
     // Class methods
-        template<class TVal, class JVal>
-        void AddNameValuePair(const string& name, TVal* pval)
+        template<class TVal, class JVal, class DVal>
+        void AddNameValuePair(const string& name, TVal* pval, const DVal& defaultVal)
         {
-            m_Map.insert( pair< string, CJSONValue* >(name, new JVal(name, pval)));
+            m_Map.insert( pair< string, CJSONValue* >(name, new JVal(name, pval, defaultVal)));
         }
     
         // Could Remove the following becasuse of the encompassing method above.
@@ -637,7 +662,7 @@ class CJSONValueObject : public CJSONValue
         }
         void AddStringArrayValue(const string& name, vector<string>* pval)
         {
-            m_Map.insert(pair<string, CJSONValue* >(name,  new CJSONValueArray<string, CJSONValueString>(name, pval)));
+            m_Map.insert(pair<string, CJSONValue* >(name,  new CJSONValueArray<string, CJSONValueString>(name, pval, "")));
         }
     
         void AddObjectValue(const string& name, CJSONValueObject* pval)
@@ -651,6 +676,108 @@ class CJSONValueObject : public CJSONValue
         CJSONValueObject*                               m_pDerived;         // ?? remove this ??
         map < string, CJSONValue* >                     m_Map;              // map for each element in the object at this level. How to access data?
 };
+
+
+//                  CJSONValuePointer
+//********************************************************************//
+// TVal is a data type that can be parsed by the corresponding
+// json class JVal. It is intended to allow for flexibility in
+// parsing and different coding styles. Some special handling
+// of memory will be required by the user so that all objects
+// are created and destroyed properly. This class will allocate
+// the memory if needed but will not destroy it.  That responsiblity
+// rests on the calling root object.
+//
+// It is important to set *m_pValue to NULL if memory is needed to
+// be allocated.  Otherwise no memory will be allocated.
+//********************************************************************//
+
+template< typename TVal, typename JVal>
+class CJSONValuePointer : public CJSONValue
+{
+    public:
+        CJSONValuePointer(const string& name, TVal** pval) : CJSONValue(JSON_NULL, name), m_pValue(pval), m_pJson(nullptr)
+        {
+            cout << "Pointer @"<<*m_pValue<<endl;
+            if(!*m_pValue)
+            {
+                (*m_pValue) = new TVal; // must have default constructor.
+            }
+            
+            m_pJson = new JVal(name, (*m_pValue)); // delete in the desctructor.
+        }
+    
+    // Destructor.
+        ~CJSONValuePointer()
+        {
+            if(m_pJson && !m_pJson->IsObject()) // do not delete json object.
+                delete m_pJson;
+            m_pJson = nullptr;
+        }
+    
+    // Overloaded Methods
+        bool Parse (const json_t* pVal)
+        {
+            return m_pJson->Parse(pVal);
+        }
+    
+        bool Dump (json_t*& pRet)
+        {
+            return m_pJson->Dump(pRet);
+        }
+    
+    // Accessor Methods
+        const TVal* GetValue() const { return *m_pValue; }
+    
+    private:
+        TVal**      m_pValue;
+        JVal*       m_pJson;
+};
+
+// Specialization for objects.
+template< typename TVal>
+class CJSONValuePointer<TVal, CJSONValueObject> : public CJSONValue
+{
+    public:
+        CJSONValuePointer(const string& name, TVal** pval) : CJSONValue(JSON_NULL, name), m_pValue(pval), m_pJson(nullptr)
+        {
+            cout << "Pointer to JSON object detected @ " << *m_pValue << endl;
+            
+            if(!*m_pValue)
+            {
+                (*m_pValue) = new TVal; // must have default constructor.
+            }
+            
+            (*m_pValue)->SetupJSONObject();
+            m_pJson = (*m_pValue);
+
+        }
+    
+    // Destructor.
+        ~CJSONValuePointer()
+        {
+            // nothing to delete this time
+        }
+    
+    // Overloaded Methods
+        bool Parse (const json_t* pVal)
+        {
+            return m_pJson->Parse(pVal);
+        }
+    
+        bool Dump (json_t*& pRet)
+        {
+            return m_pJson->Dump(pRet);
+        }
+    
+    // Accessor Methods
+        const TVal* GetValue() const { return *m_pValue; }
+    
+    private:
+        TVal**                  m_pValue;
+        CJSONValueObject*       m_pJson;
+};
+
 
 
 // This class is used to perform the file IO and interface with the
@@ -728,6 +855,14 @@ class CJSONParser
             return bDumpSuccess;
         }
     
+        size_t RootArrayLength()
+        {
+            if ( IsRootArray() )
+            {
+                return json_array_size(m_pRoot);
+            }
+            return 0;
+        }
 
         bool IsRootObject()
         {
