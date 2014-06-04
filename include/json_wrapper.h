@@ -570,7 +570,7 @@ class CJSONValueObject : public CJSONValue
     
         void Destroy()
         {
-            cout << "Destroying " << m_name << " objects!" << endl;
+            // cout << "Destroying " << m_name << " objects!" << endl;
             map<string, CJSONValue* >::iterator iter;
             for(iter = m_Map.begin(); iter != m_Map.end(); iter++)
             {
@@ -747,7 +747,7 @@ class CJSONValuePointer : public CJSONValue
     // Destructor.
         ~CJSONValuePointer()
         {
-            cout << "Calling ~CJSONValuePointer "<< m_pJson << endl;
+            // cout << "Calling ~CJSONValuePointer "<< m_pJson << endl;
             if(m_pJson && !m_pJson->IsObject()) // do not delete json object.
                 delete m_pJson;
             m_pJson = NULL;
@@ -798,7 +798,7 @@ class CJSONValuePointer<TVal, CJSONValueObject> : public CJSONValue
     // Destructor.
         ~CJSONValuePointer()
         {
-            cout << "Calling ~CJSONValuePointer<TVal, CJSONValueObject>"<< m_pJson << endl;
+            // cout << "Calling ~CJSONValuePointer<TVal, CJSONValueObject>"<< m_pJson << endl;
             // nothing to delete this time
         }
     
