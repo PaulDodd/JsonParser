@@ -245,7 +245,7 @@ class CJSONValueArray : public CJSONValue
     public:
         CJSONValueArray(const string& name, vector<TVal>* pval, const vector<TVal>& defaultVal = vector<TVal>()) : CJSONValue(JSON_ARRAY, name), m_pValue(pval), m_DefaultValue(defaultVal)
         {
-            m_DefaultArrayValue = JVal("", nullptr).GetDefaultValue();
+            m_DefaultArrayValue = JVal("", NULL).GetDefaultValue();
         }
     
         CJSONValueArray(const CJSONValueArray& src ) : CJSONValue(JSON_ARRAY, src.GetName())
@@ -729,7 +729,7 @@ template< typename TVal, typename JVal>
 class CJSONValuePointer : public CJSONValue
 {
     public:
-        CJSONValuePointer(const string& name, TVal** pval, TVal* defaultVal = nullptr) : CJSONValue(JSON_NULL, name), m_pValue(pval), m_pJson(nullptr), m_DefaultValue(defaultVal)
+        CJSONValuePointer(const string& name, TVal** pval, TVal* defaultVal = NULL) : CJSONValue(JSON_NULL, name), m_pValue(pval), m_pJson(NULL), m_DefaultValue(defaultVal)
         {
             if(m_pValue)
             {
@@ -748,7 +748,7 @@ class CJSONValuePointer : public CJSONValue
         {
             if(m_pJson && !m_pJson->IsObject()) // do not delete json object.
                 delete m_pJson;
-            m_pJson = nullptr;
+            m_pJson = NULL;
         }
     
     // Overloaded Methods
@@ -776,7 +776,7 @@ template< typename TVal>
 class CJSONValuePointer<TVal, CJSONValueObject> : public CJSONValue
 {
     public:
-        CJSONValuePointer(const string& name, TVal** pval, TVal* defaultVal = nullptr) : CJSONValue(JSON_NULL, name), m_pValue(pval), m_pJson(nullptr), m_DefaultValue(defaultVal)
+        CJSONValuePointer(const string& name, TVal** pval, TVal* defaultVal = NULL) : CJSONValue(JSON_NULL, name), m_pValue(pval), m_pJson(NULL), m_DefaultValue(defaultVal)
         {
             if(m_pValue)
             {
