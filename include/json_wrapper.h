@@ -656,34 +656,50 @@ class CJSONValueObject : public CJSONValue
         template<class TVal, class JVal>
         void AddNameValuePair(const string& name, TVal* pval)
         {
-            m_Map.insert( pair< string, CJSONValue* >(name, new JVal(name, pval)));
+            map < string, CJSONValue* >::iterator iter = m_Map.find(name);
+            if(iter == m_Map.end())
+            {
+                m_Map.insert( pair< string, CJSONValue* >(name, new JVal(name, pval)));
+            }
+            else
+            {
+                cout << "Already a key named "<< name << " is in the object. No action taken."<<endl;
+            }
         }
     
         // Could Remove the following becasuse of the encompassing method above.
         void AddIntegerValue(const string& name, int* pval)
         {
-            m_Map.insert(pair<string, CJSONValue* >(name,  new CJSONValueInt(name, pval)));
+            AddNameValuePair<int, CJSONValueInt>(name, pval);
         }
         void AddUIntegerValue(const string& name, size_t* pval)
         {
-            m_Map.insert(pair<string, CJSONValue* >(name,  new CJSONValueUInt(name, pval)));
+            AddNameValuePair<size_t, CJSONValueUInt>(name, pval);
         }
         void AddBoolValue(const string& name, bool* pval)
         {
-            m_Map.insert(pair<string, CJSONValue* >(name,  new CJSONValueBool(name, pval)));
+            AddNameValuePair<bool, CJSONValueBool>(name, pval);
         }
         void AddStringValue(const string& name, string* pval)
         {
-            m_Map.insert(pair<string, CJSONValue* >(name,  new CJSONValueString(name, pval)));
+            AddNameValuePair<string, CJSONValueString>(name, pval);
         }
         void AddStringArrayValue(const string& name, vector<string>* pval)
         {
-            m_Map.insert(pair<string, CJSONValue* >(name,  new CJSONValueArray<string, CJSONValueString>(name, pval)));
+            AddNameValuePair<vector<string>, CJSONValueArray<string, CJSONValueString> >(name, pval);
         }
     
         void AddObjectValue(const string& name, CJSONValueObject* pval)
         {
-            m_Map.insert(pair<string, CJSONValue* >(name,  pval));
+            map < string, CJSONValue* >::iterator iter = m_Map.find(name);
+            if(iter == m_Map.end())
+            {
+                m_Map.insert(pair<string, CJSONValue* >(name,  pval));
+            }
+            else
+            {
+                cout << "Already a key named "<< name << " is in the object. No action taken."<<endl;
+            }
         }
     
         CJSONValueObject* GetDerived()  { return m_pDerived; }
@@ -717,7 +733,7 @@ class CJSONValuePointer : public CJSONValue
         {
             if(m_pValue)
             {
-                cout << "Pointer @"<<*m_pValue<<endl;
+                // cout << "Pointer @ "<<*m_pValue<<endl;
                 if(!*m_pValue)
                 {
                     (*m_pValue) = new TVal; // must have default constructor.
@@ -764,7 +780,7 @@ class CJSONValuePointer<TVal, CJSONValueObject> : public CJSONValue
         {
             if(m_pValue)
             {
-                cout << "Pointer to JSON object detected @ " << *m_pValue << endl;
+                // cout << "Pointer to JSON object detected @ " << *m_pValue << endl;
                 
                 if(!*m_pValue)
                 {
