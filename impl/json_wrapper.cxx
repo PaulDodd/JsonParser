@@ -48,15 +48,17 @@ class tabular : public json::CJSONValueObject  // inherit the JSON Object for fi
             this->AddIntegerValue("length", &length);
             this->AddBoolValue("use_space", &bUseSpace);
             
+            cout << "Checkpoint 1" << endl;
             // ok there are quite a few template parameters.
             AddNameValuePair<   std::vector<int*>,
                                 json::CJSONValueArray<  int*,
                                                         json::CJSONValuePointer<    int,
-                                                                                    json::CJSONValueInt > > >("IntPointerArray", &vec, nullptr);
+                                                                                    json::CJSONValueInt > > >("IntPointerArray", &vec);
+            cout << "Checkpoint 2" << endl;
             AddNameValuePair<   std::vector<TestClass*>,
                                 json::CJSONValueArray<  TestClass*,
                                                         json::CJSONValuePointer<    TestClass,
-                                                                                    json::CJSONValueObject > > >("ObjectPointerArray", &vec2, nullptr);
+                                                                                    json::CJSONValueObject > > >("ObjectPointerArray", &vec2);
         }
     
         void AllocateSomeMem()
@@ -89,6 +91,7 @@ class tabular : public json::CJSONValueObject  // inherit the JSON Object for fi
 class test : public json::CJSONValueObject
 {
     public:
+        test(): CJSONValueObject("", this) {}
         test(string path) : CJSONValueObject("", this) // root object has no name. (see parser comment)
         {
             SetupJSONObject();
