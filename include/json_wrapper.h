@@ -19,7 +19,6 @@
 #include <iostream>
 #include <vector>
 #include <map>
-#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -339,6 +338,7 @@ class CJSONValueArray : public CJSONValue
 // This requires c++11.
 #if __cplusplus >= 201103L
 
+#include <tuple>
 
 // My tuple utility functions.
 
