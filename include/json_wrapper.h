@@ -245,11 +245,7 @@ class CJSONValueArray : public CJSONValue
     public:
         CJSONValueArray(const string& name, vector<TVal>* pval, const vector<TVal>& defaultVal = vector<TVal>()) : CJSONValue(JSON_ARRAY, name), m_pValue(pval), m_DefaultValue(defaultVal)
         {
-            cout << "Initializing CJSONValueArray " << name << " @ "<< pval << endl;
-            JVal temp("", nullptr);
-            cout << "Initializing CJSONValueArray " << name << " @ "<< pval << endl;
-            
-            m_DefaultArrayValue = temp.GetDefaultValue();
+            m_DefaultArrayValue = JVal("", nullptr).GetDefaultValue();
         }
     
         CJSONValueArray(const CJSONValueArray& src ) : CJSONValue(JSON_ARRAY, src.GetName())
@@ -679,6 +675,10 @@ class CJSONValueObject : public CJSONValue
         void AddBoolValue(const string& name, bool* pval)
         {
             AddNameValuePair<bool, CJSONValueBool>(name, pval);
+        }
+        void AddFloatingPointValue(const string& name, double* pval)
+        {
+            AddNameValuePair<double, CJSONValueFloat>(name, pval);
         }
         void AddStringValue(const string& name, string* pval)
         {

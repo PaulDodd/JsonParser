@@ -12,7 +12,7 @@ class TestClass : public json::CJSONValueObject  // inherit the JSON Object for 
     
         void SetupJSONObject()
         {
-            cout << "TestClass::SetupJSONObject"<<endl;
+            //cout << "TestClass::SetupJSONObject"<<endl;
             AddIntegerValue("obj_test_int", &testInt);
             AddStringValue("obj_test_string", &testString);
         }
@@ -44,17 +44,17 @@ class tabular : public json::CJSONValueObject  // inherit the JSON Object for fi
     
         void SetupJSONObject() // All the code you have to add to parse the file for this object!!!!
         {
-            cout << "tabular::SetupJSONObject"<<endl;
+            //cout << "tabular::SetupJSONObject"<<endl;
             this->AddIntegerValue("length", &length);
             this->AddBoolValue("use_space", &bUseSpace);
             
-            cout << "Checkpoint 1" << endl;
+            //cout << "Checkpoint 1" << endl;
             // ok there are quite a few template parameters.
             AddNameValuePair<   std::vector<int*>,
                                 json::CJSONValueArray<  int*,
                                                         json::CJSONValuePointer<    int,
                                                                                     json::CJSONValueInt > > >("IntPointerArray", &vec);
-            cout << "Checkpoint 2" << endl;
+            //cout << "Checkpoint 2" << endl;
             AddNameValuePair<   std::vector<TestClass*>,
                                 json::CJSONValueArray<  TestClass*,
                                                         json::CJSONValuePointer<    TestClass,
@@ -110,7 +110,7 @@ class test : public json::CJSONValueObject
     
         bool LoadFromFile(const string& Path)
         {
-            cout << "test::LoadFromFile"<<endl;
+            //cout << "test::LoadFromFile"<<endl;
             json::CJSONParser json;
             json.LoadFromFile(Path);    // opens the JSON file and loads the data into buffer.
             
