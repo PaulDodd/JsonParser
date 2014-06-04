@@ -570,7 +570,7 @@ class CJSONValueObject : public CJSONValue
     
         void Destroy()
         {
-            //cout << "Destroying objects!" << endl;
+            cout << "Destroying " << m_name << " objects!" << endl;
             map<string, CJSONValue* >::iterator iter;
             for(iter = m_Map.begin(); iter != m_Map.end(); iter++)
             {
@@ -737,7 +737,7 @@ class CJSONValuePointer : public CJSONValue
                 // cout << "Pointer @ "<<*m_pValue<<endl;
                 if(!*m_pValue)
                 {
-                    (*m_pValue) = new TVal; // must have default constructor.
+                    (*m_pValue) = new TVal; // must have default constructor. delete in the parent object.
                 }
                 
                 m_pJson = new JVal(name, (*m_pValue)); // delete in the desctructor.
@@ -747,6 +747,7 @@ class CJSONValuePointer : public CJSONValue
     // Destructor.
         ~CJSONValuePointer()
         {
+            cout << "Calling ~CJSONValuePointer "<< m_pJson << endl;
             if(m_pJson && !m_pJson->IsObject()) // do not delete json object.
                 delete m_pJson;
             m_pJson = NULL;
@@ -783,7 +784,7 @@ class CJSONValuePointer<TVal, CJSONValueObject> : public CJSONValue
             {
                 // cout << "Pointer to JSON object detected @ " << *m_pValue << endl;
                 
-                if(!*m_pValue)
+                if(!(*m_pValue))
                 {
                     (*m_pValue) = new TVal; // must have default constructor.
                 }
@@ -797,6 +798,7 @@ class CJSONValuePointer<TVal, CJSONValueObject> : public CJSONValue
     // Destructor.
         ~CJSONValuePointer()
         {
+            cout << "Calling ~CJSONValuePointer<TVal, CJSONValueObject>"<< m_pJson << endl;
             // nothing to delete this time
         }
     
