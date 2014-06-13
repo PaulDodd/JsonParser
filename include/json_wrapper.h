@@ -233,6 +233,8 @@ class CJSONValueBool : public CJSONValue
         bool* m_pValue;
 };
 
+
+
 // Will have to think about how to make this work for fixed array types of containers.
 // Implemeted to work with the std::vector class for ease.
 // ?? Could/Should make a CJSONValueFixedArray<> class and change the name of this class to be CJSONValueDynamicArray or CJSONValueVector ??
@@ -335,6 +337,8 @@ class CJSONValueArray : public CJSONValue
 };
 
 
+
+
 // This requires c++11.
 #if __cplusplus >= 201103L
 #include <tuple>
@@ -371,7 +375,7 @@ inline typename std::enable_if< I == sizeof... (Ts), bool >::type is_type (
                                                                             std::tuple< Ts... >& t,
                                                                             const size_t& Index)
 {
-    return false; // Index out of range so return NULL.
+    return false; // Index out of range so return false.
 }
 
 template< std::size_t I = 0, class TVal, typename... Ts >
@@ -502,7 +506,8 @@ class CJSONValueTuple : public CJSONValue
             pRet = json_array();
             if(pRet)
             {
-                for(size_t i = 0; i < std::tuple_size< tuple<TVals...> >::value; i++)
+                // size_t i = 0;
+                for(size_t i = 0; i < std::tuple_size< tuple<TVals...> >::value; i++) // for( auto& val : *m_pValue)
                 {
                     json_t* pVal = NULL;
                     
