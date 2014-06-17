@@ -127,7 +127,7 @@ class CJSONValueNumber : public CJSONValue // may need an unsigned version of th
             bool bParseSuccess = false;
             if(json_is_number(pVal))
             {
-                cout << "JSON number found" << endl;
+                // cout << "JSON number found" << endl;
                 bParseSuccess = true;
                 *m_pValue = NVal(json_number_value(pVal)); // Always casts to a double so we have to cast it back.
             }
