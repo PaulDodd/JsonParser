@@ -28,7 +28,7 @@ namespace json {
 
 // TODOs:
 // 1.   make general numerical class with template. and that all numerical classes are compatible.
-//      this will make certian use cases possible and code more flexible.
+//      this will make certian use cases possible and code more flexible. (check)
 //
 // 2.   jansson manages memory through reference counts.  Need to double check that all are
 //      being handeled correctly.
@@ -36,6 +36,8 @@ namespace json {
 // 3.   Parser class to have a owned pointer and a unowned pointer
 //
 // 4.   Parser update json functionality.
+//
+// 5.   Write unit tests to test all the code.
 //
 
 
@@ -68,6 +70,7 @@ class CJSONValue
         bool IsArray()  { return m_type == JSON_ARRAY; }
         bool IsObject() { return m_type == JSON_OBJECT; }
         bool IsBool()   { return m_type == JSON_TRUE; }
+        bool IsNull()   { return m_type == JSON_NULL; }
     
         string TypeToString()
         {
@@ -96,6 +99,10 @@ class CJSONValue
             {
                 type = "bool";
             }
+            else if(IsNull())
+            {
+                type = "null";
+            }
             
             return type;
 
@@ -107,112 +114,159 @@ class CJSONValue
         string      m_name;
 };
 
-class CJSONValueInt : public CJSONValue // may need an unsigned version of this class.
+template< class NVal, json_type _type_ >
+class CJSONValueNumber : public CJSONValue // may need an unsigned version of this class.
 {
     public:
-        CJSONValueInt(const string& name, int * pval, const int& defaultVal = 0) : CJSONValue(JSON_INTEGER, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
-        ~CJSONValueInt() {}
+        CJSONValueNumber(const string& name, NVal * pval, const NVal& defaultVal = 0) : CJSONValue(_type_, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
+        ~CJSONValueNumber() {}
     
     // Overloaded Methods
         bool Parse (const json_t* pVal)
         {
             bool bParseSuccess = false;
-            if(json_is_integer(pVal))
+            if(json_is_number(pVal))
             {
                 // cout << "JSON integer found" << endl;
-                *m_pValue = json_integer_value(pVal);
+                *m_pValue = NVal(json_number_value(pVal)); // Always casts to a double so we have to cast it back.
             }
             else{
-                fprintf(stderr, "ERROR: %s is not an integer as expected.", m_name.c_str());
+                fprintf(stderr, "ERROR: %s is not an number (%s) as expected. \n", m_name.c_str(), TypeToString().c_str());
             }
             return bParseSuccess;
         }
     
         bool Dump (json_t*& pRet)
         {
-            pRet = json_integer(*m_pValue);
+            if(IsInt())
+                pRet = json_integer(*m_pValue);
+            else
+                pRet = json_real(*m_pValue);
+            
             m_pJValue = pRet;
             return pRet != NULL;
         }
     
     // Accessor Methods
-        const int& GetValue() const { return *m_pValue; }
-        const int& GetDefaultValue() const { return m_DefaultValue; }
+        const NVal& GetValue() const { return *m_pValue; }
+        const NVal& GetDefaultValue() const { return m_DefaultValue; }
     
     private:
-        int  m_DefaultValue;
-        int* m_pValue;
+        NVal  m_DefaultValue;
+        NVal* m_pValue;
 };
 
-class CJSONValueUInt : public CJSONValue // may need an unsigned version of this class.
-{
-    public:
-        CJSONValueUInt(const string& name, size_t* pval, const size_t& defaultVal = 0) : CJSONValue(JSON_INTEGER, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
-        ~CJSONValueUInt() {}
-    
-    // Overloaded Methods
-        bool Parse (const json_t* pVal)
-        {
-            bool bParseSuccess = false;
-            if(json_is_integer(pVal))
-            {
-                // cout << "JSON integer found" << endl;
-                *m_pValue = json_integer_value(pVal);
-            }
-            else{
-                fprintf(stderr, "ERROR: %s is not an integer as expected.", m_name.c_str());
-            }
-            return bParseSuccess;
-        }
-    
-        bool Dump (json_t*& pRet)
-        {
-            pRet = json_integer(*m_pValue);
-            m_pJValue = pRet;
-            return pRet != NULL;
-        }
-    
-    // Accessor Methods
-        const size_t& GetValue() const { return *m_pValue; }
-        const size_t& GetDefaultValue() const { return m_DefaultValue; }
-    private:
-        size_t  m_DefaultValue;
-        size_t* m_pValue;
-};
+typedef CJSONValueNumber<int, JSON_INTEGER>         CJSONValueInt;
+typedef CJSONValueNumber<size_t, JSON_INTEGER>      CJSONValueUInt;
+typedef CJSONValueNumber<double, JSON_REAL>         CJSONValueFloat; // Should probably rename this to double and make one for actual float.
 
-class CJSONValueFloat : public CJSONValue
-{
-    public:
-        CJSONValueFloat(const string& name, double* pval, const double& defaultVal = 0.0) : CJSONValue(JSON_REAL, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
-        ~CJSONValueFloat() {}
-    
-        bool Parse (const json_t* pVal)
-        {
-            bool bParseSuccess = false;
-            if(json_is_real(pVal))
-            {
-                // cout << "JSON real found" << endl;
-                *m_pValue = json_real_value(pVal);
-            }
-            else{
-                fprintf(stderr, "ERROR: %s is not an floating point number as expected.", m_name.c_str());
-            }
-            return bParseSuccess;
-        }
-    
-        bool Dump (json_t*& pRet)
-        {
-            pRet = json_real(*m_pValue);
-            m_pJValue = pRet;
-            return pRet != NULL;
-        }
-    
-        const double& GetValue() const { return *m_pValue; }
-        const double& GetDefaultValue() const { return m_DefaultValue; }
-    private:
-        double  m_DefaultValue;
-        double* m_pValue;
-};
+// TODO: Remove the following once the code above proves itself.
+//class CJSONValueInt : public CJSONValue // may need an unsigned version of this class.
+//{
+//    public:
+//        CJSONValueInt(const string& name, int * pval, const int& defaultVal = 0) : CJSONValue(JSON_INTEGER, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
+//        ~CJSONValueInt() {}
+//    
+//    // Overloaded Methods
+//        bool Parse (const json_t* pVal)
+//        {
+//            bool bParseSuccess = false;
+//            if(json_is_integer(pVal))
+//            {
+//                // cout << "JSON integer found" << endl;
+//                *m_pValue = int(json_number_value(pVal));
+//            }
+//            else{
+//                fprintf(stderr, "ERROR: %s is not an integer as expected. \n", m_name.c_str());
+//            }
+//            return bParseSuccess;
+//        }
+//    
+//        bool Dump (json_t*& pRet)
+//        {
+//            pRet = json_integer(*m_pValue);
+//            m_pJValue = pRet;
+//            return pRet != NULL;
+//        }
+//    
+//    // Accessor Methods
+//        const int& GetValue() const { return *m_pValue; }
+//        const int& GetDefaultValue() const { return m_DefaultValue; }
+//    
+//    private:
+//        int  m_DefaultValue;
+//        int* m_pValue;
+//};
+//
+//class CJSONValueUInt : public CJSONValue // may need an unsigned version of this class.
+//{
+//    public:
+//        CJSONValueUInt(const string& name, size_t* pval, const size_t& defaultVal = 0) : CJSONValue(JSON_INTEGER, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
+//        ~CJSONValueUInt() {}
+//    
+//    // Overloaded Methods
+//        bool Parse (const json_t* pVal)
+//        {
+//            bool bParseSuccess = false;
+//            if(json_is_integer(pVal))
+//            {
+//                // cout << "JSON integer found" << endl;
+//                *m_pValue = json_integer_value(pVal);
+//            }
+//            else{
+//                fprintf(stderr, "ERROR: %s is not an integer as expected. \n", m_name.c_str());
+//            }
+//            return bParseSuccess;
+//        }
+//    
+//        bool Dump (json_t*& pRet)
+//        {
+//            pRet = json_integer(*m_pValue);
+//            m_pJValue = pRet;
+//            return pRet != NULL;
+//        }
+//    
+//    // Accessor Methods
+//        const size_t& GetValue() const { return *m_pValue; }
+//        const size_t& GetDefaultValue() const { return m_DefaultValue; }
+//    private:
+//        size_t  m_DefaultValue;
+//        size_t* m_pValue;
+//};
+//
+//class CJSONValueFloat : public CJSONValue
+//{
+//    public:
+//        CJSONValueFloat(const string& name, double* pval, const double& defaultVal = 0.0) : CJSONValue(JSON_REAL, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
+//        ~CJSONValueFloat() {}
+//    
+//        bool Parse (const json_t* pVal)
+//        {
+//            bool bParseSuccess = false;
+//            if(json_is_real(pVal))
+//            {
+//                // cout << "JSON real found" << endl;
+//                *m_pValue = json_real_value(pVal);
+//            }
+//            else{
+//                fprintf(stderr, "ERROR: %s is not an floating point number as expected. \n", m_name.c_str());
+//            }
+//            return bParseSuccess;
+//        }
+//    
+//        bool Dump (json_t*& pRet)
+//        {
+//            pRet = json_real(*m_pValue);
+//            m_pJValue = pRet;
+//            return pRet != NULL;
+//        }
+//    
+//        const double& GetValue() const { return *m_pValue; }
+//        const double& GetDefaultValue() const { return m_DefaultValue; }
+//    private:
+//        double  m_DefaultValue;
+//        double* m_pValue;
+//};
 
 class CJSONValueString : public CJSONValue
 {
@@ -229,7 +283,7 @@ class CJSONValueString : public CJSONValue
                 *m_pValue = json_string_value(pVal);
             }
             else{
-                fprintf(stderr, "ERROR: %s is not an string as expected.", m_name.c_str());
+                fprintf(stderr, "ERROR: %s is not an string as expected. \n", m_name.c_str());
             }
             return bParseSuccess;
         }
@@ -265,7 +319,7 @@ class CJSONValueBool : public CJSONValue
                 *m_pValue = json_is_true(pVal);
             }
             else{
-                fprintf(stderr, "ERROR: %s is not a boolean as expected.", m_name.c_str());
+                fprintf(stderr, "ERROR: %s is not a boolean as expected. \n", m_name.c_str());
             }
             return bParseSuccess;
         }
@@ -336,7 +390,7 @@ class CJSONValueArray : public CJSONValue
                 }
             }
             else{
-                fprintf(stderr, "ERROR: %s is not an array as expected.", m_name.c_str());
+                fprintf(stderr, "ERROR: %s is not an array as expected. \n", m_name.c_str());
             }
 
             return bParseSuccess;
