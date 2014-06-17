@@ -26,8 +26,17 @@ using namespace std;
 
 namespace json {
 
-// TODO: make general numerical class with template. and that all numerical classes are compatible.
-// this will make certian use cases possible and code more flexible.
+// TODOs:
+// 1.   make general numerical class with template. and that all numerical classes are compatible.
+//      this will make certian use cases possible and code more flexible.
+//
+// 2.   jansson manages memory through reference counts.  Need to double check that all are
+//      being handeled correctly.
+//
+// 3.   Parser class to have a owned pointer and a unowned pointer
+//
+// 4.   Parser update json functionality.
+//
 
 
 class CJSONValue
@@ -37,8 +46,14 @@ class CJSONValue
         {
             m_type = type;
             m_name = name;
+            m_pJValue = NULL;
         }
-        virtual ~CJSONValue() {}
+        virtual ~CJSONValue()
+        {
+            //cout << " N ~CJSONValue " << TypeToString() << " " << m_pJValue << " has " << (m_pJValue ? m_pJValue->refcount : 0) << endl;
+            json_decref( m_pJValue );
+            //cout << " X ~CJSONValue " << TypeToString() << " " << m_pJValue << " has " << (m_pJValue ? m_pJValue->refcount : 0) << endl;
+        }
     
     // Abstract methods
         virtual bool Parse (const json_t* pVal) = 0;
@@ -52,8 +67,42 @@ class CJSONValue
         bool IsString() { return m_type == JSON_STRING; }
         bool IsArray()  { return m_type == JSON_ARRAY; }
         bool IsObject() { return m_type == JSON_OBJECT; }
+        bool IsBool()   { return m_type == JSON_TRUE; }
+    
+        string TypeToString()
+        {
+            string type;
+            if(IsInt())
+            {
+                type = "integer";
+            }
+            else if(IsFloat())
+            {
+                type = "float";
+            }
+            else if(IsString())
+            {
+                type = "string";
+            }
+            else if(IsArray())
+            {
+                type = "array";
+            }
+            else if(IsObject())
+            {
+                type = "object";
+            }
+            else if(IsBool())
+            {
+                type = "bool";
+            }
+            
+            return type;
+
+        }
     
     protected:
+        json_t*     m_pJValue;  // buffer to hold values for dump.
         json_type   m_type;
         string      m_name;
 };
@@ -82,6 +131,7 @@ class CJSONValueInt : public CJSONValue // may need an unsigned version of this 
         bool Dump (json_t*& pRet)
         {
             pRet = json_integer(*m_pValue);
+            m_pJValue = pRet;
             return pRet != NULL;
         }
     
@@ -118,6 +168,7 @@ class CJSONValueUInt : public CJSONValue // may need an unsigned version of this
         bool Dump (json_t*& pRet)
         {
             pRet = json_integer(*m_pValue);
+            m_pJValue = pRet;
             return pRet != NULL;
         }
     
@@ -152,6 +203,7 @@ class CJSONValueFloat : public CJSONValue
         bool Dump (json_t*& pRet)
         {
             pRet = json_real(*m_pValue);
+            m_pJValue = pRet;
             return pRet != NULL;
         }
     
@@ -186,6 +238,7 @@ class CJSONValueString : public CJSONValue
         {
             pRet = json_string(m_pValue->c_str());
             if(!pRet) cout << "Error could not dump string " << m_name << endl;
+            m_pJValue = pRet;
             return pRet != NULL;
         }
     
@@ -200,7 +253,7 @@ class CJSONValueString : public CJSONValue
 class CJSONValueBool : public CJSONValue
 {
     public:
-        CJSONValueBool(const string& name, bool * pval, const bool& defaultVal = false) : CJSONValue(JSON_STRING, name), m_pValue(pval), m_DefaultValue(defaultVal)  {}
+        CJSONValueBool(const string& name, bool * pval, const bool& defaultVal = false) : CJSONValue(JSON_TRUE, name), m_pValue(pval), m_DefaultValue(defaultVal)  {}
         ~CJSONValueBool() {}
     
         bool Parse (const json_t* pVal)
@@ -222,6 +275,7 @@ class CJSONValueBool : public CJSONValue
 //            cout << "boolean value = " << boolalpha << *m_pValue << " @ " << m_pValue << " -> "<< pRet << endl;
             pRet = (*m_pValue) ? json_true() : json_false();
 //            cout << "json boolean value @ " << pRet << endl;
+            m_pJValue = pRet;
             return pRet != NULL;
         }
     
@@ -315,8 +369,8 @@ class CJSONValueArray : public CJSONValue
             {
                 bDumpSuccess = false;
                 cout << "Error! Could not dump array. "<< m_name << endl;
-                
             }
+            m_pJValue = pRet;
             return bDumpSuccess;
         }
     
@@ -556,6 +610,7 @@ class CJSONValueTuple : public CJSONValue
                 cout << "Error! Could not dump array. "<< m_name << endl;
                 
             }
+            m_pJValue = pRet;
             return bDumpSuccess;
         }
     
@@ -629,7 +684,7 @@ class CJSONValueObject : public CJSONValue
                     json_t* value = NULL;
                     if ( iter->second->Dump(value) )
                     {
-                        if ( json_object_set_nocheck(pRet, iter->first.c_str(), value) == -1)
+                        if ( json_object_set(pRet, iter->first.c_str(), value) == -1)
                         {
                             bDumpSuccess = false;
                             cout << "Error! Could not add " << iter->first << " to object of size "<< json_object_size(pRet) << endl;
@@ -647,7 +702,7 @@ class CJSONValueObject : public CJSONValue
                 cout << "Error! could not create object!" << endl;
                 bDumpSuccess = false;
             }
-            
+            m_pJValue = pRet;
             return bDumpSuccess;
         }
     
@@ -838,15 +893,15 @@ class CJSONValuePointer<TVal, CJSONValueObject> : public CJSONValue
 class CJSONParser
 {
     public:
-        CJSONParser() : m_pRoot(NULL)
+        CJSONParser(size_t flags = (JSON_INDENT(4) | JSON_SORT_KEYS | JSON_PRESERVE_ORDER)) : m_pRoot(NULL), m_Flags(flags)
         {
-            // cout << "json parser created." << endl;
-            m_Flags = JSON_INDENT(4);
         }
     
         ~CJSONParser()
         {
-            json_decref(m_pRoot); // better way to delete ?
+            cout << " N ~CJSONParser " << " " << m_pRoot << " has " << (m_pRoot ? m_pRoot->refcount : 0) << endl;
+            json_decref(m_pRoot); // deletes the buffer.
+            cout << " N ~CJSONParser " << " " << m_pRoot << " has " << (m_pRoot ? m_pRoot->refcount : 0) << endl;
         }
     
         bool Load(const char* pBuffer)
@@ -891,16 +946,23 @@ class CJSONParser
         bool DumpObjectToFile(const string& Path, CJSONValueObject* pOject)
         {
             bool bDumpSuccess = false;
-            size_t flags = JSON_INDENT(4);
-            if(pOject->Dump(m_pRoot))
+            
+            if(m_pRoot) // Release ownership.
             {
-                bDumpSuccess = (json_dump_file(m_pRoot, Path.c_str(), flags) == 0);
+                json_decref(m_pRoot);
+                m_pRoot = NULL;
+            }
+            
+            pOject->Dump(m_pRoot);
+            if(m_pRoot)
+            {
+                json_incref(m_pRoot); // decalare shared ownership.
+                bDumpSuccess = (json_dump_file(m_pRoot, Path.c_str(), m_Flags) == 0);
             }
             else
             {
                 cout << "Error dumping object! " << endl;
             }
-            
             
             return bDumpSuccess;
         }
@@ -978,7 +1040,57 @@ class CJSONParser
 
 
 
+/*
+JSON_INDENT(n)
+Pretty-print the result, using newlines between array and object items, and indenting with n spaces. The valid range for n is between 0 and 31 (inclusive), other values result in an undefined output. If JSON_INDENT is not used or n is 0, no newlines are inserted between array and object items.
+JSON_COMPACT
+This flag enables a compact representation, i.e. sets the separator between array and object items to "," and between object keys and values to ":". Without this flag, the corresponding separators are ", " and ": " for more readable output.
+JSON_ENSURE_ASCII
+If this flag is used, the output is guaranteed to consist only of ASCII characters. This is achived by escaping all Unicode characters outside the ASCII range.
+JSON_SORT_KEYS
+If this flag is used, all the objects in output are sorted by key. This is useful e.g. if two JSON texts are diffed or visually compared.
+JSON_PRESERVE_ORDER
+If this flag is used, object keys in the output are sorted into the same order in which they were first inserted to the object. For example, decoding a JSON text and then encoding with this flag preserves the order of object keys.
+JSON_ENCODE_ANY
+Specifying this flag makes it possible to encode any JSON value on its own. Without it, only objects and arrays can be passed as the root value to the encoding functions.
 
+Note: Encoding any value may be useful in some scenarios, but it’s generally discouraged as it violates strict compatiblity with RFC 4627. If you use this flag, don’t expect interoperatibility with other JSON systems.
+
+New in version 2.1.
+
+JSON_ESCAPE_SLASH
+Escape the / characters in strings with \/.
+
+New in version 2.4.
+
+
+
+JSON_REJECT_DUPLICATES
+Issue a decoding error if any JSON object in the input text contains duplicate keys. Without this flag, the value of the last occurence of each key ends up in the result. Key equivalence is checked byte-by-byte, without special Unicode comparison algorithms.
+
+New in version 2.1.
+
+JSON_DECODE_ANY
+By default, the decoder expects an array or object as the input. With this flag enabled, the decoder accepts any valid JSON value.
+
+Note: Decoding any value may be useful in some scenarios, but it’s generally discouraged as it violates strict compatiblity with RFC 4627. If you use this flag, don’t expect interoperatibility with other JSON systems.
+
+New in version 2.3.
+
+JSON_DISABLE_EOF_CHECK
+By default, the decoder expects that its whole input constitutes a valid JSON text, and issues an error if there’s extra data after the otherwise valid JSON input. With this flag enabled, the decoder stops after decoding a valid JSON array or object, and thus allows extra data after the JSON text.
+
+Normally, reading will stop when the last ] or } in the JSON input is encountered. If both JSON_DISABLE_EOF_CHECK and JSON_DECODE_ANY flags are used, the decoder may read one extra UTF-8 code unit (up to 4 bytes of input). For example, decoding 4true correctly decodes the integer 4, but also reads the t. For this reason, if reading multiple consecutive values that are not arrays or objects, they should be separated by at least one whitespace character.
+
+New in version 2.1.
+
+JSON_DECODE_INT_AS_REAL
+JSON defines only one number type. Jansson distinguishes between ints and reals. For more information see Real vs. Integer. With this flag enabled the decoder interprets all numbers as real values. Integers that do not have an exact double representation will silently result in a loss of precision. Integers that cause a double overflow will cause an error.
+
+New in version 2.5.
+
+
+*/
 
 
 
