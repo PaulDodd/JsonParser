@@ -127,7 +127,8 @@ class CJSONValueNumber : public CJSONValue // may need an unsigned version of th
             bool bParseSuccess = false;
             if(json_is_number(pVal))
             {
-                // cout << "JSON integer found" << endl;
+                cout << "JSON number found" << endl;
+                bParseSuccess = true;
                 *m_pValue = NVal(json_number_value(pVal)); // Always casts to a double so we have to cast it back.
             }
             else{
@@ -280,6 +281,7 @@ class CJSONValueString : public CJSONValue
             if(json_is_string(pVal))
             {
                 // cout << "JSON string found" << endl;
+                bParseSuccess = true;
                 *m_pValue = json_string_value(pVal);
             }
             else{
@@ -316,6 +318,7 @@ class CJSONValueBool : public CJSONValue
             if(json_is_boolean(pVal))
             {
                 // cout << "JSON boolean found" << endl;
+                bParseSuccess = true;
                 *m_pValue = json_is_true(pVal);
             }
             else{
@@ -702,23 +705,28 @@ class CJSONValueObject : public CJSONValue
     // Inherited Abstract Methods.
         virtual bool Parse (const json_t* pVal)
         {
-            bool bParseSucess = true;
-            
-            
+            bool bParseSuccess = false;
             // cout << "Calling CJSONValueObject::Parse" << endl;
-            
-            json_t* data;
-            map<string, CJSONValue* >::iterator iter;
-            for(iter = m_Map.begin(); iter != m_Map.end(); iter++)
+            if(json_is_object(pVal))
             {
-                data = json_object_get(pVal, iter->first.c_str());
-                if(data)
-                    bParseSucess = iter->second->Parse(data) && bParseSucess;
-                else
-                    cout << "Key (" << iter->first << ") was not found in file." << endl;
+                bParseSuccess = true;
+                json_t* data;
+                map<string, CJSONValue* >::iterator iter;
+                for(iter = m_Map.begin(); iter != m_Map.end(); iter++)
+                {
+                    data = json_object_get(pVal, iter->first.c_str());
+                    if(data)
+                        bParseSuccess = iter->second->Parse(data) && bParseSuccess;
+                    else
+                        cout << "Key (" << iter->first << ") was not found in file." << endl;
+                }
+            }
+            else
+            {
+                fprintf(stderr, "ERROR: %s is not an object as expected. \n", m_name.c_str());
             }
             
-            return bParseSucess;
+            return bParseSuccess;
         }
     
         virtual bool Dump (json_t*& pRet)
