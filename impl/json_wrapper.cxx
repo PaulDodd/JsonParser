@@ -155,6 +155,12 @@ int main(int argc, const char * argv[])
         cout << "Error dumping the file." << endl;
     }
     
+    
+    tuple<int, int, double> t1(1, 2, 3.0);
+    tuple<json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueFloat> t2(  json::CJSONValueInt("Dummy", nullptr),
+                                                                                json::CJSONValueInt("Dummy", nullptr),
+                                                                                json::CJSONValueFloat("Dummy", nullptr));
+    
     return 0;
 }
 

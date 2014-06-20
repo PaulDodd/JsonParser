@@ -541,11 +541,48 @@ inline typename std::enable_if< I < 5, void>::type count_to_five_or_less(const s
 
 /************************************************************************************************************************************************************************/
 
+// http://stackoverflow.com/questions/14261183/how-to-make-generic-computations-over-heterogeneous-argument-packs-of-a-variadic#comment19793780_14261183
+// http://stackoverflow.com/questions/5484930/split-variadic-template-arguments
+
 
 // Because how the template arguments pack the tuple must be comprised of the following types: bool, int, double, or string.
 // Parse will fail if a different type is recieved.
 // ?? Can this be generalized more ??
-template<typename... TVals>
+
+
+//template < typename... Types1, template <typename...> class T
+//         , typename... Types2, template <typename...> class V>
+//void
+//bar(const T<Types1...>&, const V<Types2...>&)
+//{
+//  std::cout << sizeof...(Types1) << std::endl;
+//  std::cout << sizeof...(Types2) << std::endl;
+//}
+//
+//
+//template<typename... TVals>
+//class CValuePack
+//{
+//    tuple<TVals...> first_pack;
+//};
+//
+//template<CValuePack<> TVal, CValuePack<> JVal>
+//class CPacklet
+//{
+//public:
+//    CPacklet() { bar(TVal, JVal);  }
+//    
+//    template < typename... Types1, template <typename...> class T
+//             , typename... Types2, template <typename...> class V>
+//    void
+//    bar(const T<Types1...>&, const V<Types2...>&)
+//    {
+//      std::cout << sizeof...(Types1) << std::endl;
+//      std::cout << sizeof...(Types2) << std::endl;
+//    }
+//};
+
+template< typename... TVals >
 class CJSONValueTuple : public CJSONValue
 {
     public:
@@ -622,32 +659,39 @@ class CJSONValueTuple : public CJSONValue
                 {
                     json_t* pVal = NULL;
                     
-
-                    // cout << "data @ " << pTemp<< " = "<< *pTemp << endl;
+                    
                     if(is_type<0, bool, TVals...>(*m_pValue, i))
                     {
                         auto* pTemp = pull<0, bool, TVals...>(*m_pValue, i);
                         CJSONValueBool tjson("", pTemp);
+                        cout << "bool data @ " << pTemp << " = "<< *pTemp << endl;
                         bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
+                        json_incref(pVal);
                     }
                     else if(is_type<0, int, TVals...>(*m_pValue, i))
                     {
                         auto* pTemp = pull<0, int, TVals...>(*m_pValue, i);
                         CJSONValueInt tjson("", pTemp);
+                        cout << "int data @ " << pTemp << " = "<< *pTemp << endl;
                         bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
+                        json_incref(pVal);
                     }
                     else if(is_type<0, double, TVals...>(*m_pValue, i) ||
                             is_type<0, float, TVals...>(*m_pValue, i) )
                     {
                         auto* pTemp = pull<0, double, TVals...>(*m_pValue, i);
                         CJSONValueFloat tjson("", pTemp);
+                        cout << "float data @ " << pTemp<< " = "<< *pTemp << endl;
                         bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
+                        json_incref(pVal);
                     }
                     else if(is_type<0, string, TVals...>(*m_pValue, i))
                     {
                         auto* pTemp = pull<0, string, TVals...>(*m_pValue, i);
                         CJSONValueString tjson("", pTemp);
+                        cout << "string data @ " <<  pTemp << " = "<< *pTemp << endl;
                         bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
+                        json_incref(pVal);
                     }
                     else{
                         cout << "Error could not match data type array element. " << m_name << "[" << i << "]" << endl;
@@ -658,7 +702,8 @@ class CJSONValueTuple : public CJSONValue
                         bDumpSuccess = (json_array_append(pRet, pVal) != -1) && bDumpSuccess;
                     else
                         cout << "Error could not dump array element. " << m_name << "[" << i << "]" << endl;
-            
+                    
+                    json_decref(pVal);
                 }
             }
             else
@@ -676,6 +721,7 @@ class CJSONValueTuple : public CJSONValue
     private:
         tuple<TVals...>*    m_pValue;
         tuple<TVals...>     m_DefaultValue;
+    
 };
 
 #endif
