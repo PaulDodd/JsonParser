@@ -156,10 +156,10 @@ int main(int argc, const char * argv[])
     }
     
     
-    tuple<int, int, double> t1(1, 2, 3.0);
-    tuple<json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueFloat> t2(  json::CJSONValueInt("Dummy", nullptr),
-                                                                                json::CJSONValueInt("Dummy", nullptr),
-                                                                                json::CJSONValueFloat("Dummy", nullptr));
+//    tuple<int, int, double> t1(1, 2, 3.0);
+//    tuple<json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueFloat> t2(  json::CJSONValueInt("Dummy", nullptr),
+//                                                                                json::CJSONValueInt("Dummy", nullptr),
+//                                                                                json::CJSONValueFloat("Dummy", nullptr));
     
     return 0;
 }
