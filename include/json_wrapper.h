@@ -19,7 +19,15 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <stdarg.h>
 
+#if __cplusplus >= 201103L
+// Needed for the tuple class.
+#include <tuple>
+#include <type_traits>
+#include <utility>
+
+#endif
 
 
 using namespace std;
@@ -60,7 +68,8 @@ class CJSONValue
     // Abstract methods
         virtual bool Parse (const json_t* pVal) = 0;
         virtual bool Dump (json_t*& pRet) = 0;
-        // virtual bool IsValid() = 0;
+    
+        virtual void Setup(size_t argc, ...) {} // to make virtual abstract?
     
     // Accessor Methods
         const string& GetName() const { return m_name; }
@@ -109,7 +118,7 @@ class CJSONValue
         }
     
     protected:
-        json_t*     m_pJValue;  // buffer to hold values for dump.
+        json_t*     m_pJValue;  // buffer to hold values for dump on create in the dump command.
         json_type   m_type;
         string      m_name;
 };
@@ -159,115 +168,8 @@ class CJSONValueNumber : public CJSONValue // may need an unsigned version of th
 
 typedef CJSONValueNumber<int, JSON_INTEGER>         CJSONValueInt;
 typedef CJSONValueNumber<size_t, JSON_INTEGER>      CJSONValueUInt;
-typedef CJSONValueNumber<double, JSON_REAL>         CJSONValueFloat; // Should probably rename this to double and make one for actual float.
-
-// TODO: Remove the following once the code above proves itself.
-//class CJSONValueInt : public CJSONValue // may need an unsigned version of this class.
-//{
-//    public:
-//        CJSONValueInt(const string& name, int * pval, const int& defaultVal = 0) : CJSONValue(JSON_INTEGER, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
-//        ~CJSONValueInt() {}
-//    
-//    // Overloaded Methods
-//        bool Parse (const json_t* pVal)
-//        {
-//            bool bParseSuccess = false;
-//            if(json_is_integer(pVal))
-//            {
-//                // cout << "JSON integer found" << endl;
-//                *m_pValue = int(json_number_value(pVal));
-//            }
-//            else{
-//                fprintf(stderr, "ERROR: %s is not an integer as expected. \n", m_name.c_str());
-//            }
-//            return bParseSuccess;
-//        }
-//    
-//        bool Dump (json_t*& pRet)
-//        {
-//            pRet = json_integer(*m_pValue);
-//            m_pJValue = pRet;
-//            return pRet != NULL;
-//        }
-//    
-//    // Accessor Methods
-//        const int& GetValue() const { return *m_pValue; }
-//        const int& GetDefaultValue() const { return m_DefaultValue; }
-//    
-//    private:
-//        int  m_DefaultValue;
-//        int* m_pValue;
-//};
-//
-//class CJSONValueUInt : public CJSONValue // may need an unsigned version of this class.
-//{
-//    public:
-//        CJSONValueUInt(const string& name, size_t* pval, const size_t& defaultVal = 0) : CJSONValue(JSON_INTEGER, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
-//        ~CJSONValueUInt() {}
-//    
-//    // Overloaded Methods
-//        bool Parse (const json_t* pVal)
-//        {
-//            bool bParseSuccess = false;
-//            if(json_is_integer(pVal))
-//            {
-//                // cout << "JSON integer found" << endl;
-//                *m_pValue = json_integer_value(pVal);
-//            }
-//            else{
-//                fprintf(stderr, "ERROR: %s is not an integer as expected. \n", m_name.c_str());
-//            }
-//            return bParseSuccess;
-//        }
-//    
-//        bool Dump (json_t*& pRet)
-//        {
-//            pRet = json_integer(*m_pValue);
-//            m_pJValue = pRet;
-//            return pRet != NULL;
-//        }
-//    
-//    // Accessor Methods
-//        const size_t& GetValue() const { return *m_pValue; }
-//        const size_t& GetDefaultValue() const { return m_DefaultValue; }
-//    private:
-//        size_t  m_DefaultValue;
-//        size_t* m_pValue;
-//};
-//
-//class CJSONValueFloat : public CJSONValue
-//{
-//    public:
-//        CJSONValueFloat(const string& name, double* pval, const double& defaultVal = 0.0) : CJSONValue(JSON_REAL, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
-//        ~CJSONValueFloat() {}
-//    
-//        bool Parse (const json_t* pVal)
-//        {
-//            bool bParseSuccess = false;
-//            if(json_is_real(pVal))
-//            {
-//                // cout << "JSON real found" << endl;
-//                *m_pValue = json_real_value(pVal);
-//            }
-//            else{
-//                fprintf(stderr, "ERROR: %s is not an floating point number as expected. \n", m_name.c_str());
-//            }
-//            return bParseSuccess;
-//        }
-//    
-//        bool Dump (json_t*& pRet)
-//        {
-//            pRet = json_real(*m_pValue);
-//            m_pJValue = pRet;
-//            return pRet != NULL;
-//        }
-//    
-//        const double& GetValue() const { return *m_pValue; }
-//        const double& GetDefaultValue() const { return m_DefaultValue; }
-//    private:
-//        double  m_DefaultValue;
-//        double* m_pValue;
-//};
+//typedef CJSONValueNumber<float, JSON_REAL>          CJSONValueFloat;
+typedef CJSONValueNumber<double, JSON_REAL>         CJSONValueFloat;
 
 class CJSONValueString : public CJSONValue
 {
@@ -343,8 +245,6 @@ class CJSONValueBool : public CJSONValue
         bool  m_DefaultValue;
         bool* m_pValue;
 };
-
-
 
 // Will have to think about how to make this work for fixed array types of containers.
 // Implemeted to work with the std::vector class for ease.
@@ -447,14 +347,8 @@ class CJSONValueArray : public CJSONValue
         TVal            m_DefaultArrayValue;
 };
 
-
-
-
 // This requires c++11.
 #if __cplusplus >= 201103L
-#include <tuple>
-#include <type_traits>
-#include <utility>
 
 // My tuple utility functions.
 
@@ -467,7 +361,7 @@ inline typename std::enable_if< I == sizeof...(Ts), void >::type put (
 {
     return;
 }
-
+// induction
 template< std::size_t I = 0, class TVal, typename... Ts >
 inline typename std::enable_if< I < sizeof...(Ts), void >::type put (
                                                                         std::tuple< Ts... >& t,
@@ -488,7 +382,7 @@ inline typename std::enable_if< I == sizeof... (Ts), bool >::type is_type (
 {
     return false; // Index out of range so return false.
 }
-
+// induction
 template< std::size_t I = 0, class TVal, typename... Ts >
 inline typename std::enable_if< I < sizeof...(Ts), bool >::type is_type (
                                                                             std::tuple< Ts... >& t,
@@ -500,7 +394,6 @@ inline typename std::enable_if< I < sizeof...(Ts), bool >::type is_type (
         return is_type<I+1, TVal, Ts...>(t, Index);
 }
 
-
 // base case
 template< std::size_t I = 0, class TVal, typename... Ts >
 inline typename std::enable_if< I == sizeof... (Ts), TVal* >::type pull (
@@ -509,7 +402,7 @@ inline typename std::enable_if< I == sizeof... (Ts), TVal* >::type pull (
 {
     return NULL; // Index out of range so return NULL.
 }
-
+// induction
 template< std::size_t I = 0,  class TVal, typename... Ts >
 inline typename std::enable_if< I < sizeof...(Ts), TVal* >::type pull (
                                                                             std::tuple< Ts... >& t,
@@ -521,14 +414,45 @@ inline typename std::enable_if< I < sizeof...(Ts), TVal* >::type pull (
         return pull<I+1, TVal, Ts...>(t, Index);
 }
 
+template< typename FromVal, typename ToVal>
+inline typename std::enable_if< typeid(FromVal) == typeid(ToVal), void >::type assign_from (
+                                                                                                FromVal& from,
+                                                                                                ToVal&  to)
+{
+    to = from;
+    return;
+}
+
+// base case
+template< std::size_t I = 0, class TVal, typename... Ts >
+inline typename std::enable_if< I == sizeof... (Ts), void >::type pull2 (
+                                                                            std::tuple< Ts... >& t,
+                                                                            TVal& val,
+                                                                            const size_t& Index)
+{
+    return; // Index out of range so return NULL.
+}
+// induction
+template< std::size_t I = 0,  class TVal, typename... Ts >
+inline typename std::enable_if< I < sizeof...(Ts), void >::type pull2 (
+                                                                            std::tuple< Ts... >& t,
+                                                                            TVal& val,
+                                                                            const size_t& Index)
+{
+    if(I == Index)
+        val = std::get<I>(t);
+    else
+        pull2<I+1, TVal, Ts...>(t, val, Index);
+}
 
 
+// base case
 template< std::size_t I = 0>
 inline typename std::enable_if< I == 5, void>::type count_to_five_or_less(const size_t& Index)
 {
     return;
 }
-
+// induction
 template< std::size_t I = 0>
 inline typename std::enable_if< I < 5, void>::type count_to_five_or_less(const size_t& Index)
 {
@@ -536,8 +460,6 @@ inline typename std::enable_if< I < 5, void>::type count_to_five_or_less(const s
         cout << I << endl;
     count_to_five_or_less<I+1>(Index);
 }
-
-
 
 /************************************************************************************************************************************************************************/
 
@@ -548,40 +470,6 @@ inline typename std::enable_if< I < 5, void>::type count_to_five_or_less(const s
 // Because how the template arguments pack the tuple must be comprised of the following types: bool, int, double, or string.
 // Parse will fail if a different type is recieved.
 // ?? Can this be generalized more ??
-
-
-//template < typename... Types1, template <typename...> class T
-//         , typename... Types2, template <typename...> class V>
-//void
-//bar(const T<Types1...>&, const V<Types2...>&)
-//{
-//  std::cout << sizeof...(Types1) << std::endl;
-//  std::cout << sizeof...(Types2) << std::endl;
-//}
-//
-//
-//template<typename... TVals>
-//class CValuePack
-//{
-//    tuple<TVals...> first_pack;
-//};
-//
-//template<CValuePack<> TVal, CValuePack<> JVal>
-//class CPacklet
-//{
-//public:
-//    CPacklet() { bar(TVal, JVal);  }
-//    
-//    template < typename... Types1, template <typename...> class T
-//             , typename... Types2, template <typename...> class V>
-//    void
-//    bar(const T<Types1...>&, const V<Types2...>&)
-//    {
-//      std::cout << sizeof...(Types1) << std::endl;
-//      std::cout << sizeof...(Types2) << std::endl;
-//    }
-//};
-
 template< typename... TVals >
 class CJSONValueTuple : public CJSONValue
 {
@@ -710,7 +598,6 @@ class CJSONValueTuple : public CJSONValue
             {
                 bDumpSuccess = false;
                 cout << "Error! Could not dump array. "<< m_name << endl;
-                
             }
             m_pJValue = pRet;
             return bDumpSuccess;
@@ -724,7 +611,194 @@ class CJSONValueTuple : public CJSONValue
     
 };
 
-#endif
+// TODO: Change the naming conventions here to be a little more representative and general.
+class CValueElementBase
+{
+    public:
+        using type = void;
+    
+        virtual void    IsInt() = 0; // just a simple test function.
+
+    
+};
+
+template<class TVal>
+class CValueElement : public CValueElementBase
+{
+    public:
+        using type = TVal;
+    
+        void IsInt() // overload of a test funciton.
+        {
+            cout << "is type int: " <<boolalpha<< is_same<type, int>::value << endl;
+        }
+};
+
+class CPacklet
+{
+    public:
+        CPacklet(){}
+        ~CPacklet(){}
+    
+        void SetMap(const size_t& argc, ...)
+        {
+            
+        }
+    
+//        template<typename TVal>
+//        void getTypes()
+//        {
+//            CValueElement<TVal> temp;
+//            m_ValueVector.push_back(temp);
+//            cout    << "There are "<< 0 << " types left "<< endl
+//                    << "Found "<< m_ValueVector.size() << " types so far." << endl;
+//        }
+        template<typename TVal, typename... Types>
+        typename enable_if<sizeof...(Types) == 0, void >::type
+        getTypes()
+        {
+            m_ValueVector.push_back( unique_ptr< CValueElementBase >(new CValueElement<TVal> ));
+            cout    << "There are "<< 0 << " types left "<< endl
+                    << "Found "<< m_ValueVector.size() << " types so far." << endl;
+            
+        }
+    
+        template<typename TVal, typename... Types>
+        typename enable_if< 0 < sizeof...(Types) , void >::type
+        getTypes()
+        {
+            m_ValueVector.push_back( unique_ptr< CValueElementBase >(new CValueElement<TVal> ));
+            cout    << "There are "<< sizeof...(Types) << " types left "<< endl
+                    << "Found "<< m_ValueVector.size() << " types so far." << endl;
+            if(sizeof...(Types) > 0)
+                getTypes<Types...>();
+        }
+    
+        template<typename TVal, typename... Types>
+        typename enable_if<sizeof...(Types) == 0, void >::type
+        getType( const size_t& i, size_t& ct)
+        {
+            return;
+        }
+    
+        template<typename TVal, typename... Types>
+        typename enable_if< 0 < sizeof...(Types) , void >::type
+        getType( const size_t& i, size_t& ct)
+        {
+            
+        }
+    
+    
+        template<typename... Types>
+        void SetMap11()
+        {
+            cout << "There are "<< sizeof...(Types) << " different types" << endl;
+            cout << endl;
+            //CValueElement<Types...> my_Types;
+            //my_Types.IsInt();
+            getTypes<Types...>();
+            
+            for(size_t i = 0; i < m_ValueVector.size(); i++)
+            {
+                m_ValueVector[i]->IsInt();
+            }
+        }
+    
+        CValueElementBase* get_pack( const size_t& i)
+        {
+            return m_ValueVector[i].get();
+        }
+    
+        void PrintTypes()
+        {
+            
+        }
+    
+    private:
+        vector< unique_ptr<CValueElementBase> > m_ValueVector; // unique ptr handles the memory management.
+        vector< unique_ptr<CJSONValue> >        m_ValueMap;
+};
+
+// TODO: Rename to CJSONValueTuple and remove the class above once this is working.
+template< typename CVal, typename... TVals >
+class CJSONValueTupleEx : public CJSONValue
+{
+    public:
+        template< typename... SVals >
+        CJSONValueTupleEx(const string& name, CVal* pval, const CVal&& defaultVal = CVal()) : CJSONValue(JSON_ARRAY, name), m_pValue(pval), m_DefaultValue(defaultVal)
+        {
+            cout << "Tuple contains " << sizeof...(TVals) << " elements..." << endl;
+            m_ValueMap.SetMap11<TVals...>();
+        }
+    
+        ~CJSONValueTupleEx() {}
+    // Overloaded Methods
+        bool Parse (const json_t* pVal)
+        {
+            bool bParseSuccess = false;
+            if(json_is_array(pVal))
+            {
+                bParseSuccess = true;
+                size_t n = json_array_size(pVal);
+                json_t* data;
+                
+                for (size_t i = 0; i < n; i++)
+                {
+                    char array_number[30]; // should be enough space.
+                    sprintf(&array_number[0], "-%zu", i);
+                    string elemName(m_name + string(array_number));
+                
+                    data = json_array_get(pVal, i);
+                    
+                }
+            }
+            else{
+                fprintf(stderr, "ERROR: %s is not an array as expected. \n", m_name.c_str());
+            }
+
+            return bParseSuccess;
+        }
+    
+        bool Dump (json_t*& pRet)
+        {
+            bool bDumpSuccess = true;
+            pRet = json_array();
+            if(pRet)
+            {
+                // size_t i = 0;
+                for(size_t i = 0; i < std::tuple_size< tuple<TVals...> >::value; i++) // for( auto& val : *m_pValue)
+                {
+                    json_t* pVal = NULL;
+                    
+                    if(pVal)
+                        bDumpSuccess = (json_array_append(pRet, pVal) != -1) && bDumpSuccess;
+                    else
+                        cout << "Error could not dump array element. " << m_name << "[" << i << "]" << endl;
+                    
+                }
+            }
+            else
+            {
+                bDumpSuccess = false;
+                cout << "Error! Could not dump array. "<< m_name << endl;
+            }
+            m_pJValue = pRet;
+            return bDumpSuccess;
+        }
+    
+    
+        const CVal& GetDefaultValue() { return m_DefaultValue; }
+    private:
+        CVal*       m_pValue;
+        CVal        m_DefaultValue;
+        CPacklet    m_ValueMap;
+};
+
+#endif // end c++11 specialization
+
+
+
+
 class CJSONValueObject : public CJSONValue
 {
     public:
@@ -744,8 +818,9 @@ class CJSONValueObject : public CJSONValue
                     iter->second = NULL;
                 }
             }
-            
             m_Map.clear();
+            
+            cout << "JSON object " << m_name << " destroyed!" << m_Map.size() << " objects remain." << endl;
         }
     
     // Inherited Abstract Methods.
@@ -1149,6 +1224,8 @@ class CJSONParser
 
 
 /*
+From the jansson documentation:
+
 JSON_INDENT(n)
 Pretty-print the result, using newlines between array and object items, and indenting with n spaces. The valid range for n is between 0 and 31 (inclusive), other values result in an undefined output. If JSON_INDENT is not used or n is 0, no newlines are inserted between array and object items.
 JSON_COMPACT

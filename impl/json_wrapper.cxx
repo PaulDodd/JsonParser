@@ -49,7 +49,7 @@ class tabular : public json::CJSONValueObject  // inherit the JSON Object for fi
             this->AddBoolValue("use_space", &bUseSpace);
             
             //cout << "Checkpoint 1" << endl;
-            // ok there are quite a few template parameters.
+            // ok there are a few template parameters.
             AddNameValuePair<   std::vector<int*>,
                                 json::CJSONValueArray<  int*,
                                                         json::CJSONValuePointer<    int,
@@ -155,12 +155,37 @@ int main(int argc, const char * argv[])
         cout << "Error dumping the file." << endl;
     }
     
+#if __cplusplus >= 201103L // c++11 specific testing
     
-//    tuple<int, int, double> t1(1, 2, 3.0);
-//    tuple<json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueFloat> t2(  json::CJSONValueInt("Dummy", nullptr),
-//                                                                                json::CJSONValueInt("Dummy", nullptr),
-//                                                                                json::CJSONValueFloat("Dummy", nullptr));
+    tuple<int, int, double> t1(1, 2, 3.0);
+    tuple<json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueFloat> t2(  json::CJSONValueInt("Dummy", nullptr),
+                                                                                json::CJSONValueInt("Dummy", nullptr),
+                                                                                json::CJSONValueFloat("Dummy", nullptr));
     
+    
+    json::CPacklet mapper;
+    mapper.SetMap11 <    int, int, double, // CTypes.
+                        json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueFloat // JSON Types
+                    >();
+    
+    //std::remove_pointer< decltype(mapper.get_pack(0)) >::type::type integer;
+    
+    
+    json::CJSONValueTupleEx<    tuple<int, int, double>,    // Templates galore....
+                                json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueFloat> mytuple("test", &t1);
+    //::CValueMap<json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueFloat> mytuple("test", &t1);
+    
+    int temp = 0;
+    json::pull2(t1, temp, 1);
+    
+    
+    cout    << "tuple:" << get<1>(t1) << endl
+            << "temp :" << temp << endl;
+    
+    //cout    << " Can i make an integer:" << boolalpha <<is_same<decltype(integer), int> << endl;
+    
+#endif // end c++11 specific testing
+
     return 0;
 }
 
