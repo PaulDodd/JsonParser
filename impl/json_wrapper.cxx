@@ -178,6 +178,11 @@ int main(int argc, const char * argv[])
     int temp = 0;
     json::pull2(t1, temp, 1);
     
+    json::SomeFunction<int, int, double>();
+//    cout << "0 : is int : " << boolalpha << is_same<decltype(json::test_function(0)), int> << endl;
+//    cout << "0 : is double : " << boolalpha << is_same<decltype(json::test_function(0)), double> << endl;
+//    cout << "1 : is int : " << boolalpha << is_same<decltype(json::test_function(1)), int> << endl;
+//    cout << "1 : is double : " << boolalpha << is_same<decltype(json::test_function(1)), double> << endl;
     
     cout    << "tuple:" << get<1>(t1) << endl
             << "temp :" << temp << endl;
