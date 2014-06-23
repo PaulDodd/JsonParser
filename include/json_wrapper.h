@@ -630,12 +630,13 @@ class CJSONValueTuple : public CJSONValue
 //        size_t m_Size;
 //};
 
-template< size_t J, size_t I = 0, typename... Types > class param_pack; // forward definition.
+template< typename... Types > class param_pack; // forward definition.
 
 template< >
 class param_pack< > // specialization...base case.
 {
 };
+
 
 template<typename Type_, typename... Others>
 class param_pack<Type_, Others... > : public param_pack< Others... >
@@ -644,7 +645,7 @@ class param_pack<Type_, Others... > : public param_pack< Others... >
         using type = Type_;
         param_pack() : m_Size(sizeof...(Others)+1) { cout << "Initializing pack with "<< m_Size << " elements."<< endl; }
         //using type = typename enable_if<0 == I, Type_>::type;
-
+        const size_t& size() { return m_Size; }
     private:
         size_t m_Size;
 };
@@ -662,6 +663,7 @@ template < typename... Values>
 inline void SomeFunction()
 {
     param_pack<Values...> pack;
+    cout << "Finally initialized this pack with " << pack.size() << " elements" << endl;
 }
 
 
