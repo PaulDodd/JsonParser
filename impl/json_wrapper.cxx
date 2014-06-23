@@ -1,7 +1,7 @@
 
 
 #include "json_wrapper.h"
-#include "../../folding/SharedFiles/includes/Network.h"
+
 
 class TestClass : public json::CJSONValueObject  // inherit the JSON Object for file parsing.
 {
@@ -157,46 +157,18 @@ int main(int argc, const char * argv[])
     
 #if __cplusplus >= 201103L // c++11 specific testing
     
-
-    Network::CNetwork net;
-    net.LoadFromFile("network.json");
-    net.PrintNetwork();
-    net.DumpToFile("net_test.json");
     
-//    tuple<int, int, double> t1(1, 2, 3.0);
-//    tuple<json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueFloat> t2(  json::CJSONValueInt("Dummy", nullptr),
-//                                                                                json::CJSONValueInt("Dummy", nullptr),
-//                                                                                json::CJSONValueFloat("Dummy", nullptr));
-//
-//    json::CPacklet mapper;
-//    mapper.SetMap11 <    int, int, double, // CTypes.
-//                        json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueFloat // JSON Types
-//                    >();
+    tuple<int, int, double> t1(1, 2, 3.0);
+    tuple<json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueFloat> t2(  json::CJSONValueInt("Dummy", nullptr),
+                                                                                json::CJSONValueInt("Dummy", nullptr),
+                                                                                json::CJSONValueFloat("Dummy", nullptr));
     
-    //std::remove_pointer< decltype(mapper.get_pack(0)) >::type::type integer;
+    json::CJSONValueTuple<      tuple<int, int, double>,    // Templates galore....
+                                json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueFloat> mytuple("test", &t1);
+    json_t* pRet = NULL;
+    mytuple.Dump(pRet);
+    json_decref(pRet);
     
-    
-//    json::CJSONValueTupleEx<    tuple<int, int, double>,    // Templates galore....
-//                                json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueFloat> mytuple("test", &t1);
-//    json_t* pRet = NULL;
-//    mytuple.Dump(pRet);
-//    json_decref(pRet);
-    
-    //::CValueMap<json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueFloat> mytuple("test", &t1);
-    
-//    int temp = 0;
-//    json::pull2(t1, temp, 1);
-//    
-//    json::SomeFunction<int, int, double, string>();
-//    cout << "0 : is int : " << boolalpha << is_same<decltype(json::test_function(0)), int> << endl;
-//    cout << "0 : is double : " << boolalpha << is_same<decltype(json::test_function(0)), double> << endl;
-//    cout << "1 : is int : " << boolalpha << is_same<decltype(json::test_function(1)), int> << endl;
-//    cout << "1 : is double : " << boolalpha << is_same<decltype(json::test_function(1)), double> << endl;
-//    
-//    cout    << "tuple:" << get<1>(t1) << endl
-//            << "temp :" << temp << endl;
-    
-    //cout    << " Can i make an integer:" << boolalpha <<is_same<decltype(integer), int> << endl;
     
 #endif // end c++11 specific testing
 

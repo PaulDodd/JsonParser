@@ -45,8 +45,9 @@ namespace json {
 //
 // 4.   Parser update json functionality.
 //
-// 5.   Write unit tests to test all the code.
+// 5.   Write unit tests to test all the different classes.
 //
+// 6.   JSON Tuple class generalized (check)
 
 
 class CJSONValue
@@ -170,12 +171,14 @@ class CJSONValueNumber : public CJSONValue // may need an unsigned version of th
 
 typedef CJSONValueNumber<int, JSON_INTEGER>         CJSONValueInt;
 typedef CJSONValueNumber<size_t, JSON_INTEGER>      CJSONValueUInt;
-//typedef CJSONValueNumber<float, JSON_REAL>          CJSONValueFloat;
+//typedef CJSONValueNumber<float, JSON_REAL>          CJSONValueFloat; TODO: Rename this....
 typedef CJSONValueNumber<double, JSON_REAL>         CJSONValueFloat;
 
 class CJSONValueString : public CJSONValue
 {
     public:
+        typedef std::string type;
+    
         CJSONValueString(const string& name, string* pval, const string& defaultVal = "") : CJSONValue(JSON_STRING, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
         ~CJSONValueString() {}
     
@@ -213,6 +216,8 @@ class CJSONValueString : public CJSONValue
 class CJSONValueBool : public CJSONValue
 {
     public:
+        typedef bool type;
+    
         CJSONValueBool(const string& name, bool * pval, const bool& defaultVal = false) : CJSONValue(JSON_TRUE, name), m_pValue(pval), m_DefaultValue(defaultVal)  {}
         ~CJSONValueBool() {}
     
@@ -257,6 +262,8 @@ template <class TVal, class JVal>
 class CJSONValueArray : public CJSONValue
 {
     public:
+        typedef std::vector<TVal> type;
+    
         CJSONValueArray(const string& name, vector<TVal>* pval, const vector<TVal>& defaultVal = vector<TVal>()) : CJSONValue(JSON_ARRAY, name), m_pValue(pval), m_DefaultValue(defaultVal)
         {
             m_DefaultArrayValue = JVal("", NULL).GetDefaultValue();
@@ -352,483 +359,12 @@ class CJSONValueArray : public CJSONValue
 // This requires c++11.
 #if __cplusplus >= 201103L
 
-// My tuple utility functions.
-
-// base case
-template< std::size_t I = 0, class TVal, typename... Ts >
-inline typename std::enable_if< I == sizeof...(Ts), void >::type put (
-                                                                        std::tuple< Ts... >& t,
-                                                                        TVal& val,
-                                                                        const size_t& Index)
-{
-    return;
-}
-// induction
-template< std::size_t I = 0, class TVal, typename... Ts >
-inline typename std::enable_if< I < sizeof...(Ts), void >::type put (
-                                                                        std::tuple< Ts... >& t,
-                                                                        TVal& val,
-                                                                        const size_t& Index)
-{
-    if(I == Index)
-        std::get<I>(t) = decltype(std::get<I>(t))(val);
-    else
-        put< (I+1), TVal, Ts... > (t, val, Index);
-}
-
-// base case
-template< std::size_t I = 0, class TVal, typename... Ts >
-inline typename std::enable_if< I == sizeof... (Ts), bool >::type is_type (
-                                                                            std::tuple< Ts... >& t,
-                                                                            const size_t& Index)
-{
-    return false; // Index out of range so return false.
-}
-// induction
-template< std::size_t I = 0, class TVal, typename... Ts >
-inline typename std::enable_if< I < sizeof...(Ts), bool >::type is_type (
-                                                                            std::tuple< Ts... >& t,
-                                                                            const size_t& Index)
-{
-    if(I == Index)
-        return typeid(std::get<I>(t)) == typeid(TVal);
-    else
-        return is_type<I+1, TVal, Ts...>(t, Index);
-}
-
-// base case
-template< std::size_t I = 0, class TVal, typename... Ts >
-inline typename std::enable_if< I == sizeof... (Ts), TVal* >::type pull (
-                                                                            std::tuple< Ts... >& t,
-                                                                            const size_t& Index)
-{
-    return NULL; // Index out of range so return NULL.
-}
-// induction
-template< std::size_t I = 0,  class TVal, typename... Ts >
-inline typename std::enable_if< I < sizeof...(Ts), TVal* >::type pull (
-                                                                            std::tuple< Ts... >& t,
-                                                                            const size_t& Index)
-{
-    if(I == Index)
-        return (TVal*)&std::get<I>(t);
-    else
-        return pull<I+1, TVal, Ts...>(t, Index);
-}
-
-template< typename FromVal, typename ToVal>
-inline typename std::enable_if< !is_same<FromVal, ToVal>::value, void >::type assign_from (
-                                                                                                FromVal& from,
-                                                                                                ToVal&  to)
-{
-    return;
-}
-
-template< typename FromVal, typename ToVal>
-inline typename std::enable_if< is_same<FromVal, ToVal>::value, void >::type assign_from (
-                                                                                                FromVal& from,
-                                                                                                ToVal&  to)
-{
-    to = from;
-}
-
-// base case
-template< std::size_t I = 0, class TVal, typename... Ts >
-inline typename std::enable_if< I == sizeof... (Ts), void >::type pull2 (
-                                                                            std::tuple< Ts... >& t,
-                                                                            TVal& val,
-                                                                            const size_t& Index)
-{
-    return; // Index out of range so return NULL.
-}
-// induction
-template< std::size_t I = 0,  class TVal, typename... Ts >
-inline typename std::enable_if< I < sizeof...(Ts), void >::type pull2 (
-                                                                            std::tuple< Ts... >& t,
-                                                                            TVal& val,
-                                                                            const size_t& Index)
-{
-    if(I == Index)
-        val = std::get<I>(t);
-    else
-        pull2<I+1, TVal, Ts...>(t, val, Index);
-}
-
-
-// base case
-template< std::size_t I = 0>
-inline typename std::enable_if< I == 5, void>::type count_to_five_or_less(const size_t& Index)
-{
-    return;
-}
-// induction
-template< std::size_t I = 0>
-inline typename std::enable_if< I < 5, void>::type count_to_five_or_less(const size_t& Index)
-{
-    if(I < Index)
-        cout << I << endl;
-    count_to_five_or_less<I+1>(Index);
-}
-
-/************************************************************************************************************************************************************************/
-
-// http://stackoverflow.com/questions/14261183/how-to-make-generic-computations-over-heterogeneous-argument-packs-of-a-variadic#comment19793780_14261183
-// http://stackoverflow.com/questions/5484930/split-variadic-template-arguments
-
-
-// Because how the template arguments pack the tuple must be comprised of the following types: bool, int, double, or string.
-// Parse will fail if a different type is recieved.
-// ?? Can this be generalized more ??
-//template< typename... TVals >
-//class CJSONValueTuple : public CJSONValue
-//{
-//    public:
-//        CJSONValueTuple(const string& name, tuple<TVals...>* pval, const tuple<TVals...>& defaultVal = tuple<TVals...>()) : CJSONValue(JSON_ARRAY, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
-//    
-//    // Overloaded Methods
-//        bool Parse (const json_t* pVal)
-//        {
-//            bool bParseSuccess = false;
-//            if(json_is_array(pVal))
-//            {
-//                bParseSuccess = true;
-//                size_t n = json_array_size(pVal);
-//                json_t* data;
-//                
-//                for (size_t i = 0; i < n; i++)
-//                {
-//                    char array_number[30]; // should be enough space.
-//                    sprintf(&array_number[0], "-%zu", i);
-//                    string elemName(m_name + string(array_number));
-//                
-//                    data = json_array_get(pVal, i);
-//                    if(json_is_boolean(data))
-//                    {
-//                        bool temp;
-//                        CJSONValueBool jtemp(elemName, &temp);
-//                        jtemp.Parse(data);
-//                        // std::get<i>(*m_pValue) = temp;
-//                        put<0, bool, TVals...>(*m_pValue, temp, i);
-//                    }
-//                    else if(json_is_integer(data))
-//                    {
-//                        int temp;
-//                        CJSONValueInt jtemp(elemName, &temp);
-//                        jtemp.Parse(data);
-//                        put<0, int, TVals...>(*m_pValue, temp, i);
-//                    }
-//                    else if(json_is_real(data))
-//                    {
-//                        double temp;
-//                        CJSONValueFloat jtemp(elemName, &temp);
-//                        jtemp.Parse(data);
-//                        put<0, double, TVals...>(*m_pValue, temp, i);
-//                    }
-//                    else if(json_is_string(data))
-//                    {
-//                        string temp;
-//                        CJSONValueString jtemp(elemName, &temp);
-//                        jtemp.Parse(data);
-//                        put<0, string, TVals...>(*m_pValue, temp, i);
-//                    }
-//                    else{
-//                        bParseSuccess = false;
-//                        fprintf(stderr, "ERROR: %s Could not parse tuple element. Unknown type. \n", m_name.c_str());
-//                        break;
-//                    }
-//                }
-//
-//            }
-//            else{
-//                fprintf(stderr, "ERROR: %s is not an array as expected. \n", m_name.c_str());
-//            }
-//
-//            return bParseSuccess;
-//        }
-//    
-//        bool Dump (json_t*& pRet)
-//        {
-//            bool bDumpSuccess = true;
-//            pRet = json_array();
-//            if(pRet)
-//            {
-//                // size_t i = 0;
-//                for(size_t i = 0; i < std::tuple_size< tuple<TVals...> >::value; i++) // for( auto& val : *m_pValue)
-//                {
-//                    json_t* pVal = NULL;
-//                    
-//                    
-//                    if(is_type<0, bool, TVals...>(*m_pValue, i))
-//                    {
-//                        auto* pTemp = pull<0, bool, TVals...>(*m_pValue, i);
-//                        CJSONValueBool tjson("", pTemp);
-//                        cout << "bool data @ " << pTemp << " = "<< *pTemp << endl;
-//                        bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
-//                        json_incref(pVal);
-//                    }
-//                    else if(is_type<0, int, TVals...>(*m_pValue, i))
-//                    {
-//                        auto* pTemp = pull<0, int, TVals...>(*m_pValue, i);
-//                        CJSONValueInt tjson("", pTemp);
-//                        cout << "int data @ " << pTemp << " = "<< *pTemp << endl;
-//                        bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
-//                        json_incref(pVal);
-//                    }
-//                    else if(is_type<0, double, TVals...>(*m_pValue, i) ||
-//                            is_type<0, float, TVals...>(*m_pValue, i) )
-//                    {
-//                        auto* pTemp = pull<0, double, TVals...>(*m_pValue, i);
-//                        CJSONValueFloat tjson("", pTemp);
-//                        cout << "float data @ " << pTemp<< " = "<< *pTemp << endl;
-//                        bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
-//                        json_incref(pVal);
-//                    }
-//                    else if(is_type<0, string, TVals...>(*m_pValue, i))
-//                    {
-//                        auto* pTemp = pull<0, string, TVals...>(*m_pValue, i);
-//                        CJSONValueString tjson("", pTemp);
-//                        cout << "string data @ " <<  pTemp << " = "<< *pTemp << endl;
-//                        bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
-//                        json_incref(pVal);
-//                    }
-//                    else{
-//                        cout << "Error could not match data type array element. " << m_name << "[" << i << "]" << endl;
-//                        pVal = NULL;
-//                    }
-//                    
-//                    if(pVal)
-//                        bDumpSuccess = (json_array_append(pRet, pVal) != -1) && bDumpSuccess;
-//                    else
-//                        cout << "Error could not dump array element. " << m_name << "[" << i << "]" << endl;
-//                    
-//                    json_decref(pVal);
-//                }
-//            }
-//            else
-//            {
-//                bDumpSuccess = false;
-//                cout << "Error! Could not dump array. "<< m_name << endl;
-//            }
-//            m_pJValue = pRet;
-//            return bDumpSuccess;
-//        }
-//    
-//    
-//        const tuple<TVals...>& GetDefaultValue() { return m_DefaultValue; }
-//    private:
-//        tuple<TVals...>*    m_pValue;
-//        tuple<TVals...>     m_DefaultValue;
-//    
-//};
-
-//template< typename... Types > class param_pack; // forward definition.
-//
-//template< >
-//class param_pack< > // specialization...base case.
-//{
-//};
-//
-//template<typename Type_, typename... Others>
-//class param_pack<Type_, Others... > : public param_pack< Others... >
-//{
-//    public:
-//        using type = Type_;
-//        param_pack() : m_Size(sizeof...(Others)+1) { cout << "Initializing pack with "<< m_Size << " elements."<< endl; }
-//        //using type = typename enable_if<0 == I, Type_>::type;
-//
-//    private:
-//        size_t m_Size;
-//};
-/*
-template< typename... Types > struct param_pack; // forward definition.
-
-template< >
-struct param_pack< > // specialization...base case.
-{
-};
-
-
-template<typename Type_, typename... Others>
-struct param_pack<Type_, Others... >
-{
-    using type = Type_;
-    size_t m_Size;
-
-    param_pack() : m_Size(sizeof...(Others)+1) { cout << "Initializing pack with "<< m_Size << " elements."<< endl; }
-    //using type = typename enable_if<0 == I, Type_>::type;
-    param_pack<Others...>&& GetNext() { return param_pack<Others...>(); }
-    const size_t& size() { return m_Size; }
-
-};
-
-
-template<size_t I, typename... Values> struct param_pack_iterator;
-
-
-template<typename Type_, typename... Others>
-struct param_pack_iterator<0, Type_, Others...>
-{
-    using type = Type_;
-};
-
-template<size_t I, typename Type_, typename... Others>
-struct param_pack_iterator<I, Type_, Others...> : public param_pack_iterator<I-1, Others...>
-{
-};
-
-template<typename... Values> struct last;
-
-template<> struct last < > { };
-
-template<typename Type_, typename... Others>
-struct last<Type_, Others...> : last<Others...>
-{
-    using type = typename enable_if<sizeof...(Others) == 0, Type_>::type;
-};
-
-
-
-template < typename... Values>
-inline void SomeFunction()
-{
-    param_pack<Values...> pack;
-    
-    
-    cout << endl << "** Iterator **" << endl;
-    cout << 0 <<" is int:" << boolalpha << is_same< typename param_pack_iterator<0, Values...>::type, int>::value << endl;
-    cout << 1 <<" is int:" << boolalpha << is_same< typename param_pack_iterator<1, Values...>::type, int>::value << endl;
-    cout << 2 <<" is int:" << boolalpha << is_same< typename param_pack_iterator<2, Values...>::type, int>::value << endl;
-    cout << 3 <<" is int:" << boolalpha << is_same< typename param_pack_iterator<3, Values...>::type, int>::value << endl;
-    cout << "is last string:" << boolalpha << is_same< typename last<Values...>::type, string>::value << endl;
-    cout << "is last double:" << boolalpha << is_same< typename last<Values...>::type, double>::value << endl;
-    cout << "is last int:" << boolalpha << is_same< typename last<Values...>::type, int>::value << endl;
-    cout << endl << endl;
-    
-    
-    cout << "Finally initialized this pack with " << pack.size() << " elements" << endl;
-    for(size_t i = 0; i < pack.size(); i++)
-    {
-        auto iter = pack.GetNext();
-        typename param_pack<Values...>::type x;
-        cout << i <<" is int:" << boolalpha << is_same< decltype(x), int>::value << endl;
-        
-    }
-}
-
-
-// TODO: Change the naming conventions here to be a little more representative and general.
-class CValueElementBase
-{
-    public:
-    
-        virtual void    IsInt() = 0; // just a simple test function.
-
-    
-};
-
-template<class TVal>
-class CValueElement : public CValueElementBase
-{
-    public:
-        using type = TVal;
-    
-        void IsInt() // overload of a test funciton.
-        {
-            cout << "is type int: " <<boolalpha<< is_same<type, int>::value << endl;
-        }
-};
-
-class CPacklet
-{
-    public:
-        CPacklet(){}
-        ~CPacklet(){}
-    
-        void SetMap(const size_t& argc, ...)
-        {
-            
-        }
-    
-//        template<typename TVal>
-//        void getTypes()
-//        {
-//            CValueElement<TVal> temp;
-//            m_ValueVector.push_back(temp);
-//            cout    << "There are "<< 0 << " types left "<< endl
-//                    << "Found "<< m_ValueVector.size() << " types so far." << endl;
-//        }
-        template<typename TVal, typename... Types>
-        typename enable_if<sizeof...(Types) == 0, void >::type
-        getTypes()
-        {
-            m_ValueVector.push_back( unique_ptr< CValueElementBase >(new CValueElement<TVal> ));
-            cout    << "There are "<< 0 << " types left "<< endl
-                    << "Found "<< m_ValueVector.size() << " types so far." << endl;
-            
-        }
-    
-        template<typename TVal, typename... Types>
-        typename enable_if< 0 < sizeof...(Types) , void >::type
-        getTypes()
-        {
-            m_ValueVector.push_back( unique_ptr< CValueElementBase >(new CValueElement<TVal> ));
-            cout    << "There are "<< sizeof...(Types) << " types left "<< endl
-                    << "Found "<< m_ValueVector.size() << " types so far." << endl;
-            if(sizeof...(Types) > 0)
-                getTypes<Types...>();
-        }
-    
-        template<typename TVal, typename... Types>
-        typename enable_if<sizeof...(Types) == 0, void >::type
-        getType( const size_t& i, size_t& ct)
-        {
-            return;
-        }
-    
-        template<typename TVal, typename... Types>
-        typename enable_if< 0 < sizeof...(Types) , void >::type
-        getType( const size_t& i, size_t& ct)
-        {
-            return;
-        }
-    
-    
-        template<typename... Types>
-        void SetMap11()
-        {
-            cout << "There are "<< sizeof...(Types) << " different types" << endl;
-            cout << endl;
-            //CValueElement<Types...> my_Types;
-            //my_Types.IsInt();
-            getTypes<Types...>();
-            
-            for(size_t i = 0; i < m_ValueVector.size(); i++)
-            {
-                m_ValueVector[i]->IsInt();
-            }
-        }
-    
-        CValueElementBase* get_pack( const size_t& i)
-        {
-            return m_ValueVector[i].get();
-        }
-    
-        void PrintTypes()
-        {
-            
-        }
-    
-    private:
-        vector< unique_ptr<CValueElementBase> > m_ValueVector; // unique ptr handles the memory management.
-        vector< unique_ptr<CJSONValue> >        m_ValueMap;
-};
-*/
-
-// TODO: Rename to CJSONValueTuple and remove the class above once this is working.
 template< typename CVal, typename... TVals >
 class CJSONValueTuple : public CJSONValue
 {
     public:
+        typedef CVal type;
+    
         CJSONValueTuple(const string& name, CVal* pval, const CVal&& defaultVal = CVal()) : CJSONValue(JSON_ARRAY, name), m_pValue(pval), m_DefaultValue(defaultVal)
         {
             cout << "Tuple contains " << sizeof...(TVals) << " elements..." << endl;
@@ -965,6 +501,8 @@ class CJSONValueTuple : public CJSONValue
 class CJSONValueObject : public CJSONValue
 {
     public:
+        typedef CJSONValueObject type; // TODO: think about this a bit more. I am not sur this will work for the tuple class may have to pass in the parent class as a template.
+    
         CJSONValueObject(const string& name, CJSONValueObject* pval) : CJSONValue(JSON_OBJECT, name), m_pDerived(pval) {}
         ~CJSONValueObject() { Destroy(); }
     
@@ -1136,6 +674,8 @@ template< typename TVal, typename JVal>
 class CJSONValuePointer : public CJSONValue
 {
     public:
+        typedef TVal type;
+    
         CJSONValuePointer(const string& name, TVal** pval, TVal* defaultVal = NULL) : CJSONValue(JSON_NULL, name), m_pValue(pval), m_pJson(NULL), m_DefaultValue(defaultVal)
         {
             if(m_pValue)
@@ -1184,6 +724,8 @@ template< typename TVal>
 class CJSONValuePointer<TVal, CJSONValueObject> : public CJSONValue
 {
     public:
+        typedef TVal type;
+    
         CJSONValuePointer(const string& name, TVal** pval, TVal* defaultVal = NULL) : CJSONValue(JSON_NULL, name), m_pValue(pval), m_pJson(NULL), m_DefaultValue(defaultVal)
         {
             if(m_pValue)
