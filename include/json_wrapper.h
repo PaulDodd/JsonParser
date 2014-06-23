@@ -127,6 +127,8 @@ template< class NVal, json_type _type_ >
 class CJSONValueNumber : public CJSONValue // may need an unsigned version of this class.
 {
     public:
+        typedef NVal type;
+    
         CJSONValueNumber(const string& name, NVal * pval, const NVal& defaultVal = 0) : CJSONValue(_type_, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
         ~CJSONValueNumber() {}
     
@@ -415,12 +417,19 @@ inline typename std::enable_if< I < sizeof...(Ts), TVal* >::type pull (
 }
 
 template< typename FromVal, typename ToVal>
-inline typename std::enable_if< typeid(FromVal) == typeid(ToVal), void >::type assign_from (
+inline typename std::enable_if< !is_same<FromVal, ToVal>::value, void >::type assign_from (
+                                                                                                FromVal& from,
+                                                                                                ToVal&  to)
+{
+    return;
+}
+
+template< typename FromVal, typename ToVal>
+inline typename std::enable_if< is_same<FromVal, ToVal>::value, void >::type assign_from (
                                                                                                 FromVal& from,
                                                                                                 ToVal&  to)
 {
     to = from;
-    return;
 }
 
 // base case
@@ -470,146 +479,147 @@ inline typename std::enable_if< I < 5, void>::type count_to_five_or_less(const s
 // Because how the template arguments pack the tuple must be comprised of the following types: bool, int, double, or string.
 // Parse will fail if a different type is recieved.
 // ?? Can this be generalized more ??
-template< typename... TVals >
-class CJSONValueTuple : public CJSONValue
-{
-    public:
-        CJSONValueTuple(const string& name, tuple<TVals...>* pval, const tuple<TVals...>& defaultVal = tuple<TVals...>()) : CJSONValue(JSON_ARRAY, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
-    
-    // Overloaded Methods
-        bool Parse (const json_t* pVal)
-        {
-            bool bParseSuccess = false;
-            if(json_is_array(pVal))
-            {
-                bParseSuccess = true;
-                size_t n = json_array_size(pVal);
-                json_t* data;
-                
-                for (size_t i = 0; i < n; i++)
-                {
-                    char array_number[30]; // should be enough space.
-                    sprintf(&array_number[0], "-%zu", i);
-                    string elemName(m_name + string(array_number));
-                
-                    data = json_array_get(pVal, i);
-                    if(json_is_boolean(data))
-                    {
-                        bool temp;
-                        CJSONValueBool jtemp(elemName, &temp);
-                        jtemp.Parse(data);
-                        // std::get<i>(*m_pValue) = temp;
-                        put<0, bool, TVals...>(*m_pValue, temp, i);
-                    }
-                    else if(json_is_integer(data))
-                    {
-                        int temp;
-                        CJSONValueInt jtemp(elemName, &temp);
-                        jtemp.Parse(data);
-                        put<0, int, TVals...>(*m_pValue, temp, i);
-                    }
-                    else if(json_is_real(data))
-                    {
-                        double temp;
-                        CJSONValueFloat jtemp(elemName, &temp);
-                        jtemp.Parse(data);
-                        put<0, double, TVals...>(*m_pValue, temp, i);
-                    }
-                    else if(json_is_string(data))
-                    {
-                        string temp;
-                        CJSONValueString jtemp(elemName, &temp);
-                        jtemp.Parse(data);
-                        put<0, string, TVals...>(*m_pValue, temp, i);
-                    }
-                    else{
-                        bParseSuccess = false;
-                        fprintf(stderr, "ERROR: %s Could not parse tuple element. Unknown type. \n", m_name.c_str());
-                        break;
-                    }
-                }
-            }
-            else{
-                fprintf(stderr, "ERROR: %s is not an array as expected. \n", m_name.c_str());
-            }
-
-            return bParseSuccess;
-        }
-    
-        bool Dump (json_t*& pRet)
-        {
-            bool bDumpSuccess = true;
-            pRet = json_array();
-            if(pRet)
-            {
-                // size_t i = 0;
-                for(size_t i = 0; i < std::tuple_size< tuple<TVals...> >::value; i++) // for( auto& val : *m_pValue)
-                {
-                    json_t* pVal = NULL;
-                    
-                    
-                    if(is_type<0, bool, TVals...>(*m_pValue, i))
-                    {
-                        auto* pTemp = pull<0, bool, TVals...>(*m_pValue, i);
-                        CJSONValueBool tjson("", pTemp);
-                        cout << "bool data @ " << pTemp << " = "<< *pTemp << endl;
-                        bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
-                        json_incref(pVal);
-                    }
-                    else if(is_type<0, int, TVals...>(*m_pValue, i))
-                    {
-                        auto* pTemp = pull<0, int, TVals...>(*m_pValue, i);
-                        CJSONValueInt tjson("", pTemp);
-                        cout << "int data @ " << pTemp << " = "<< *pTemp << endl;
-                        bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
-                        json_incref(pVal);
-                    }
-                    else if(is_type<0, double, TVals...>(*m_pValue, i) ||
-                            is_type<0, float, TVals...>(*m_pValue, i) )
-                    {
-                        auto* pTemp = pull<0, double, TVals...>(*m_pValue, i);
-                        CJSONValueFloat tjson("", pTemp);
-                        cout << "float data @ " << pTemp<< " = "<< *pTemp << endl;
-                        bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
-                        json_incref(pVal);
-                    }
-                    else if(is_type<0, string, TVals...>(*m_pValue, i))
-                    {
-                        auto* pTemp = pull<0, string, TVals...>(*m_pValue, i);
-                        CJSONValueString tjson("", pTemp);
-                        cout << "string data @ " <<  pTemp << " = "<< *pTemp << endl;
-                        bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
-                        json_incref(pVal);
-                    }
-                    else{
-                        cout << "Error could not match data type array element. " << m_name << "[" << i << "]" << endl;
-                        pVal = NULL;
-                    }
-                    
-                    if(pVal)
-                        bDumpSuccess = (json_array_append(pRet, pVal) != -1) && bDumpSuccess;
-                    else
-                        cout << "Error could not dump array element. " << m_name << "[" << i << "]" << endl;
-                    
-                    json_decref(pVal);
-                }
-            }
-            else
-            {
-                bDumpSuccess = false;
-                cout << "Error! Could not dump array. "<< m_name << endl;
-            }
-            m_pJValue = pRet;
-            return bDumpSuccess;
-        }
-    
-    
-        const tuple<TVals...>& GetDefaultValue() { return m_DefaultValue; }
-    private:
-        tuple<TVals...>*    m_pValue;
-        tuple<TVals...>     m_DefaultValue;
-    
-};
+//template< typename... TVals >
+//class CJSONValueTuple : public CJSONValue
+//{
+//    public:
+//        CJSONValueTuple(const string& name, tuple<TVals...>* pval, const tuple<TVals...>& defaultVal = tuple<TVals...>()) : CJSONValue(JSON_ARRAY, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
+//    
+//    // Overloaded Methods
+//        bool Parse (const json_t* pVal)
+//        {
+//            bool bParseSuccess = false;
+//            if(json_is_array(pVal))
+//            {
+//                bParseSuccess = true;
+//                size_t n = json_array_size(pVal);
+//                json_t* data;
+//                
+//                for (size_t i = 0; i < n; i++)
+//                {
+//                    char array_number[30]; // should be enough space.
+//                    sprintf(&array_number[0], "-%zu", i);
+//                    string elemName(m_name + string(array_number));
+//                
+//                    data = json_array_get(pVal, i);
+//                    if(json_is_boolean(data))
+//                    {
+//                        bool temp;
+//                        CJSONValueBool jtemp(elemName, &temp);
+//                        jtemp.Parse(data);
+//                        // std::get<i>(*m_pValue) = temp;
+//                        put<0, bool, TVals...>(*m_pValue, temp, i);
+//                    }
+//                    else if(json_is_integer(data))
+//                    {
+//                        int temp;
+//                        CJSONValueInt jtemp(elemName, &temp);
+//                        jtemp.Parse(data);
+//                        put<0, int, TVals...>(*m_pValue, temp, i);
+//                    }
+//                    else if(json_is_real(data))
+//                    {
+//                        double temp;
+//                        CJSONValueFloat jtemp(elemName, &temp);
+//                        jtemp.Parse(data);
+//                        put<0, double, TVals...>(*m_pValue, temp, i);
+//                    }
+//                    else if(json_is_string(data))
+//                    {
+//                        string temp;
+//                        CJSONValueString jtemp(elemName, &temp);
+//                        jtemp.Parse(data);
+//                        put<0, string, TVals...>(*m_pValue, temp, i);
+//                    }
+//                    else{
+//                        bParseSuccess = false;
+//                        fprintf(stderr, "ERROR: %s Could not parse tuple element. Unknown type. \n", m_name.c_str());
+//                        break;
+//                    }
+//                }
+//
+//            }
+//            else{
+//                fprintf(stderr, "ERROR: %s is not an array as expected. \n", m_name.c_str());
+//            }
+//
+//            return bParseSuccess;
+//        }
+//    
+//        bool Dump (json_t*& pRet)
+//        {
+//            bool bDumpSuccess = true;
+//            pRet = json_array();
+//            if(pRet)
+//            {
+//                // size_t i = 0;
+//                for(size_t i = 0; i < std::tuple_size< tuple<TVals...> >::value; i++) // for( auto& val : *m_pValue)
+//                {
+//                    json_t* pVal = NULL;
+//                    
+//                    
+//                    if(is_type<0, bool, TVals...>(*m_pValue, i))
+//                    {
+//                        auto* pTemp = pull<0, bool, TVals...>(*m_pValue, i);
+//                        CJSONValueBool tjson("", pTemp);
+//                        cout << "bool data @ " << pTemp << " = "<< *pTemp << endl;
+//                        bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
+//                        json_incref(pVal);
+//                    }
+//                    else if(is_type<0, int, TVals...>(*m_pValue, i))
+//                    {
+//                        auto* pTemp = pull<0, int, TVals...>(*m_pValue, i);
+//                        CJSONValueInt tjson("", pTemp);
+//                        cout << "int data @ " << pTemp << " = "<< *pTemp << endl;
+//                        bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
+//                        json_incref(pVal);
+//                    }
+//                    else if(is_type<0, double, TVals...>(*m_pValue, i) ||
+//                            is_type<0, float, TVals...>(*m_pValue, i) )
+//                    {
+//                        auto* pTemp = pull<0, double, TVals...>(*m_pValue, i);
+//                        CJSONValueFloat tjson("", pTemp);
+//                        cout << "float data @ " << pTemp<< " = "<< *pTemp << endl;
+//                        bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
+//                        json_incref(pVal);
+//                    }
+//                    else if(is_type<0, string, TVals...>(*m_pValue, i))
+//                    {
+//                        auto* pTemp = pull<0, string, TVals...>(*m_pValue, i);
+//                        CJSONValueString tjson("", pTemp);
+//                        cout << "string data @ " <<  pTemp << " = "<< *pTemp << endl;
+//                        bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
+//                        json_incref(pVal);
+//                    }
+//                    else{
+//                        cout << "Error could not match data type array element. " << m_name << "[" << i << "]" << endl;
+//                        pVal = NULL;
+//                    }
+//                    
+//                    if(pVal)
+//                        bDumpSuccess = (json_array_append(pRet, pVal) != -1) && bDumpSuccess;
+//                    else
+//                        cout << "Error could not dump array element. " << m_name << "[" << i << "]" << endl;
+//                    
+//                    json_decref(pVal);
+//                }
+//            }
+//            else
+//            {
+//                bDumpSuccess = false;
+//                cout << "Error! Could not dump array. "<< m_name << endl;
+//            }
+//            m_pJValue = pRet;
+//            return bDumpSuccess;
+//        }
+//    
+//    
+//        const tuple<TVals...>& GetDefaultValue() { return m_DefaultValue; }
+//    private:
+//        tuple<TVals...>*    m_pValue;
+//        tuple<TVals...>     m_DefaultValue;
+//    
+//};
 
 //template< typename... Types > class param_pack; // forward definition.
 //
@@ -629,33 +639,52 @@ class CJSONValueTuple : public CJSONValue
 //    private:
 //        size_t m_Size;
 //};
-
-template< typename... Types > class param_pack; // forward definition.
+/*
+template< typename... Types > struct param_pack; // forward definition.
 
 template< >
-class param_pack< > // specialization...base case.
+struct param_pack< > // specialization...base case.
 {
 };
 
 
 template<typename Type_, typename... Others>
-class param_pack<Type_, Others... > : public param_pack< Others... >
+struct param_pack<Type_, Others... >
 {
-    public:
-        using type = Type_;
-        param_pack() : m_Size(sizeof...(Others)+1) { cout << "Initializing pack with "<< m_Size << " elements."<< endl; }
-        //using type = typename enable_if<0 == I, Type_>::type;
-        const size_t& size() { return m_Size; }
-    private:
-        size_t m_Size;
+    using type = Type_;
+    size_t m_Size;
+
+    param_pack() : m_Size(sizeof...(Others)+1) { cout << "Initializing pack with "<< m_Size << " elements."<< endl; }
+    //using type = typename enable_if<0 == I, Type_>::type;
+    param_pack<Others...>&& GetNext() { return param_pack<Others...>(); }
+    const size_t& size() { return m_Size; }
+
 };
 
 
-template< typename... Types > class param_pack_element;
-template< >
-class param_pack_element<> { };
+template<size_t I, typename... Values> struct param_pack_iterator;
 
 
+template<typename Type_, typename... Others>
+struct param_pack_iterator<0, Type_, Others...>
+{
+    using type = Type_;
+};
+
+template<size_t I, typename Type_, typename... Others>
+struct param_pack_iterator<I, Type_, Others...> : public param_pack_iterator<I-1, Others...>
+{
+};
+
+template<typename... Values> struct last;
+
+template<> struct last < > { };
+
+template<typename Type_, typename... Others>
+struct last<Type_, Others...> : last<Others...>
+{
+    using type = typename enable_if<sizeof...(Others) == 0, Type_>::type;
+};
 
 
 
@@ -663,7 +692,27 @@ template < typename... Values>
 inline void SomeFunction()
 {
     param_pack<Values...> pack;
+    
+    
+    cout << endl << "** Iterator **" << endl;
+    cout << 0 <<" is int:" << boolalpha << is_same< typename param_pack_iterator<0, Values...>::type, int>::value << endl;
+    cout << 1 <<" is int:" << boolalpha << is_same< typename param_pack_iterator<1, Values...>::type, int>::value << endl;
+    cout << 2 <<" is int:" << boolalpha << is_same< typename param_pack_iterator<2, Values...>::type, int>::value << endl;
+    cout << 3 <<" is int:" << boolalpha << is_same< typename param_pack_iterator<3, Values...>::type, int>::value << endl;
+    cout << "is last string:" << boolalpha << is_same< typename last<Values...>::type, string>::value << endl;
+    cout << "is last double:" << boolalpha << is_same< typename last<Values...>::type, double>::value << endl;
+    cout << "is last int:" << boolalpha << is_same< typename last<Values...>::type, int>::value << endl;
+    cout << endl << endl;
+    
+    
     cout << "Finally initialized this pack with " << pack.size() << " elements" << endl;
+    for(size_t i = 0; i < pack.size(); i++)
+    {
+        auto iter = pack.GetNext();
+        typename param_pack<Values...>::type x;
+        cout << i <<" is int:" << boolalpha << is_same< decltype(x), int>::value << endl;
+        
+    }
 }
 
 
@@ -671,7 +720,6 @@ inline void SomeFunction()
 class CValueElementBase
 {
     public:
-        using type = void;
     
         virtual void    IsInt() = 0; // just a simple test function.
 
@@ -774,39 +822,27 @@ class CPacklet
         vector< unique_ptr<CValueElementBase> > m_ValueVector; // unique ptr handles the memory management.
         vector< unique_ptr<CJSONValue> >        m_ValueMap;
 };
+*/
 
 // TODO: Rename to CJSONValueTuple and remove the class above once this is working.
 template< typename CVal, typename... TVals >
-class CJSONValueTupleEx : public CJSONValue
+class CJSONValueTuple : public CJSONValue
 {
     public:
-        template< typename... SVals >
-        CJSONValueTupleEx(const string& name, CVal* pval, const CVal&& defaultVal = CVal()) : CJSONValue(JSON_ARRAY, name), m_pValue(pval), m_DefaultValue(defaultVal)
+        CJSONValueTuple(const string& name, CVal* pval, const CVal&& defaultVal = CVal()) : CJSONValue(JSON_ARRAY, name), m_pValue(pval), m_DefaultValue(defaultVal)
         {
             cout << "Tuple contains " << sizeof...(TVals) << " elements..." << endl;
-            m_ValueMap.SetMap11<TVals...>();
+            //assert(sizeof...(TVals) == tuple_size<CVal>::value);
         }
     
-        ~CJSONValueTupleEx() {}
+        ~CJSONValueTuple() {}
     // Overloaded Methods
         bool Parse (const json_t* pVal)
         {
             bool bParseSuccess = false;
             if(json_is_array(pVal))
             {
-                bParseSuccess = true;
-                size_t n = json_array_size(pVal);
-                json_t* data;
-                
-                for (size_t i = 0; i < n; i++)
-                {
-                    char array_number[30]; // should be enough space.
-                    sprintf(&array_number[0], "-%zu", i);
-                    string elemName(m_name + string(array_number));
-                
-                    data = json_array_get(pVal, i);
-                    
-                }
+                bParseSuccess = ParseTupleElements(pVal);
             }
             else{
                 fprintf(stderr, "ERROR: %s is not an array as expected. \n", m_name.c_str());
@@ -821,17 +857,7 @@ class CJSONValueTupleEx : public CJSONValue
             pRet = json_array();
             if(pRet)
             {
-                // size_t i = 0;
-                for(size_t i = 0; i < std::tuple_size< tuple<TVals...> >::value; i++) // for( auto& val : *m_pValue)
-                {
-                    json_t* pVal = NULL;
-                    
-                    if(pVal)
-                        bDumpSuccess = (json_array_append(pRet, pVal) != -1) && bDumpSuccess;
-                    else
-                        cout << "Error could not dump array element. " << m_name << "[" << i << "]" << endl;
-                    
-                }
+                bDumpSuccess = DumpTupleElements(pRet);
             }
             else
             {
@@ -844,10 +870,91 @@ class CJSONValueTupleEx : public CJSONValue
     
     
         const CVal& GetDefaultValue() { return m_DefaultValue; }
+    
+    private:
+    // tuple utility functions.
+        template<size_t I = 0>
+        typename enable_if<I == sizeof...(TVals), bool >::type ParseTupleElements(const json_t* pVal) { return true; } // All values have been parsed...
+    
+        template<size_t I = 0>
+        typename enable_if< I < sizeof...(TVals), bool >::type ParseTupleElements(const json_t* pVal)
+        {
+            bool bParseSuccess = false;
+        
+            json_t* data;
+            
+            char array_number[30]; // should be enough space.
+            sprintf(&array_number[0], "-%zu", I);
+            string elemName(m_name + string(array_number));
+        
+            data = json_array_get(pVal, I);
+            typename std::tuple_element<I, CVal>::type* pElem = &std::get<I>(*m_pValue);
+            unique_ptr<CJSONValue> pJson = CreateJSONValue<typename std::tuple_element<I, CVal>::type, TVals...>(I, elemName, pElem);
+            cout << "Parsing type " << pJson->TypeToString() << " @ "<< I << endl;
+            bParseSuccess = pJson->Parse(data);
+            
+            return ParseTupleElements<I+1>(pVal) && bParseSuccess;
+        }
+    
+        template<size_t I = 0>
+        typename enable_if<I == sizeof...(TVals), bool >::type DumpTupleElements(json_t*& pRet) { return true; } // All values have been dumped...
+    
+        template<size_t I = 0>
+        typename enable_if< I < sizeof...(TVals), bool >::type DumpTupleElements(json_t*& pRet)
+        {
+            bool bDumpSuccess = true;
+            char array_number[30]; // should be enough space.
+            sprintf(&array_number[0], "-%zu", I);
+            string elemName(m_name + string(array_number));
+
+            json_t* pVal = NULL;
+            auto pElem = &std::get<I>(*m_pValue);
+            
+            std::unique_ptr<CJSONValue> pJson = CreateJSONValue<typename std::tuple_element<I, CVal>::type, TVals...>(I, elemName, pElem);
+            cout << "Dumping type " << pJson->TypeToString() << " @ "<< I << endl;
+            pJson->Dump(pVal);
+            
+            if(pVal)
+                bDumpSuccess = (json_array_append(pRet, pVal) != -1) && bDumpSuccess;
+            else
+                cout << "Error could not dump array element. " << m_name << "[" << I << "]" << endl;
+            
+            return DumpTupleElements<I+1>(pRet) && bDumpSuccess;
+        }
+    
+        template<class Type1, class Type2, class JType>
+        typename enable_if< !std::is_same<Type1, Type2>::value, std::unique_ptr<CJSONValue> >::type create(const std::string& name, Type1* pVal)
+        {
+            return std::unique_ptr<CJSONValue>(nullptr);
+        }
+    
+        template<class Type1, class Type2, class JType>
+        typename enable_if< std::is_same<Type1, Type2>::value, std::unique_ptr<CJSONValue> >::type create(const std::string& name, Type1* pVal)
+        {
+            return std::unique_ptr<CJSONValue>(new JType(name, pVal));
+        }
+    
+        template<typename DataType, typename Type, typename... Others>
+        typename enable_if< 0 == sizeof...(Others), std::unique_ptr<CJSONValue> >::type CreateJSONValue(const size_t& Index, const std::string& name, DataType* pVal, size_t counter = 0)
+        {
+            if(Index == counter){
+                return create<DataType, typename Type::type, Type>(name, pVal);
+            }
+            return std::unique_ptr<CJSONValue>(nullptr);
+        }
+    
+        template<typename DataType, typename Type, typename... Others>
+        typename enable_if< 0 < sizeof...(Others), std::unique_ptr<CJSONValue> >::type CreateJSONValue(const size_t& Index, const std::string& name, DataType* pVal, size_t counter = 0)
+        {
+            if(Index == counter){
+                return create<DataType, typename Type::type, Type>(name, pVal);
+            }
+            return CreateJSONValue<DataType, Others...>(Index, name, pVal, ++counter);
+        }
+    
     private:
         CVal*       m_pValue;
         CVal        m_DefaultValue;
-        CPacklet    m_ValueMap;
 };
 
 #endif // end c++11 specialization
