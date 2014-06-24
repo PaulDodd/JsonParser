@@ -159,12 +159,12 @@ int main(int argc, const char * argv[])
     
     
     tuple<int, int, double> t1(1, 2, 3.0);
-    tuple<json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueFloat> t2(  json::CJSONValueInt("Dummy", nullptr),
+    tuple<json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueDouble> t2(  json::CJSONValueInt("Dummy", nullptr),
                                                                                 json::CJSONValueInt("Dummy", nullptr),
-                                                                                json::CJSONValueFloat("Dummy", nullptr));
+                                                                                json::CJSONValueDouble("Dummy", nullptr));
     
     json::CJSONValueTuple<      tuple<int, int, double>,    // Templates galore....
-                                json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueFloat> mytuple("test", &t1);
+                                json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueDouble> mytuple("test", &t1);
     json_t* pRet = NULL;
     mytuple.Dump(pRet);
     json_decref(pRet);

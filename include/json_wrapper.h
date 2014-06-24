@@ -171,8 +171,8 @@ class CJSONValueNumber : public CJSONValue // may need an unsigned version of th
 
 typedef CJSONValueNumber<int, JSON_INTEGER>         CJSONValueInt;
 typedef CJSONValueNumber<size_t, JSON_INTEGER>      CJSONValueUInt;
-//typedef CJSONValueNumber<float, JSON_REAL>          CJSONValueFloat; TODO: Rename this....
-typedef CJSONValueNumber<double, JSON_REAL>         CJSONValueFloat;
+typedef CJSONValueNumber<float, JSON_REAL>          CJSONValueFloat;
+typedef CJSONValueNumber<double, JSON_REAL>         CJSONValueDouble;
 
 class CJSONValueString : public CJSONValue
 {
@@ -623,7 +623,7 @@ class CJSONValueObject : public CJSONValue
         }
         void AddFloatingPointValue(const string& name, double* pval)
         {
-            AddNameValuePair<double, CJSONValueFloat>(name, pval);
+            AddNameValuePair<double, CJSONValueDouble>(name, pval);
         }
         void AddStringValue(const string& name, string* pval)
         {
@@ -788,7 +788,7 @@ class CJSONParser
         ~CJSONParser()
         {
             cout << " N ~CJSONParser " << " " << m_pRoot << " has " << (m_pRoot ? m_pRoot->refcount : 0) << endl;
-            json_decref(m_pRoot); // deletes the buffer.
+            json_decref(m_pRoot); // Realease ownership
             cout << " N ~CJSONParser " << " " << m_pRoot << " has " << (m_pRoot ? m_pRoot->refcount : 0) << endl;
         }
     
