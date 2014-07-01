@@ -3,6 +3,7 @@
 #include "json_wrapper.h"
 
 
+
 class TestClass : public json::CJSONValueObject  // inherit the JSON Object for file parsing.
 {
     public:
@@ -37,9 +38,9 @@ class tabular : public json::CJSONValueObject  // inherit the JSON Object for fi
                 delete vec[i];
             vec.clear();
             
-            for(size_t i = 0; i < vec2.size(); i++)
-                delete vec2[i];
-            vec2.clear();
+//            for(size_t i = 0; i < vec2.size(); i++)
+//                delete vec2[i];
+//            vec2.clear();
         }
     
         void SetupJSONObject() // All the code you have to add to parse the file for this object!!!!
@@ -54,11 +55,15 @@ class tabular : public json::CJSONValueObject  // inherit the JSON Object for fi
                                 json::CJSONValueArray<  int*,
                                                         json::CJSONValuePointer<    int,
                                                                                     json::CJSONValueInt > > >("IntPointerArray", &vec);
+        #ifdef c_plus_plus_11
             //cout << "Checkpoint 2" << endl;
-            AddNameValuePair<   std::vector<TestClass*>,
-                                json::CJSONValueArray<  TestClass*,
-                                                        json::CJSONValuePointer<    TestClass,
-                                                                                    json::CJSONValueObject > > >("ObjectPointerArray", &vec2);
+            AddNameValuePair<   std::vector< std::shared_ptr<TestClass> >,
+                                json::CJSONValueArray<  std::shared_ptr<TestClass>,
+                                                        json::CJSONValueSmartPointer<   TestClass,
+                                                                                        std::shared_ptr,
+                                                                                        json::CJSONValueObject > > >("ObjectPointerArray", &vec2);
+
+        #endif
         }
     
         void AllocateSomeMem()
@@ -69,9 +74,10 @@ class tabular : public json::CJSONValueObject  // inherit the JSON Object for fi
                 int* pInt = new int;
                 *pInt = int(i);
                 vec.push_back(pInt);
-                
-                TestClass* pTest = new TestClass(i, string(&str[i]));
+        #ifdef c_plus_plus_11
+                std::shared_ptr<TestClass> pTest( new TestClass(i, string(&str[i])));
                 vec2.push_back(pTest);
+        #endif
             }
         }
     
@@ -84,7 +90,9 @@ class tabular : public json::CJSONValueObject  // inherit the JSON Object for fi
         int                     length;
         bool                    bUseSpace;
         vector<int*>            vec;
-        vector<TestClass*>      vec2;
+        #ifdef c_plus_plus_11
+        vector< std::shared_ptr<TestClass> >      vec2;
+        #endif
     
 };
 
@@ -150,12 +158,18 @@ int main(int argc, const char * argv[])
     test newtest("test.json");
     newtest.AllocateSomeMem();
     newtest.Print();
-    if(!newtest.DumpToFile("dump.json"))
+    if(!newtest.DumpToFile("dump_smart_pointer.json"))
     {
         cout << "Error dumping the file." << endl;
     }
     
-#if __cplusplus >= 201103L // c++11 specific testing
+#ifdef c_plus_plus_11                       // c++11 specific testing
+    std::shared_ptr<int> pShared(new int);
+    std::unique_ptr<int> pUnique(new int);
+    
+    json::CJSONValueSmartPointer<int, std::shared_ptr, json::CJSONValueInt> jsonShared("SharedPtr", &pShared);
+    json::CJSONValueSmartPointer<int, std::unique_ptr, json::CJSONValueInt> jsonUnique("UniquePtr", &pUnique);
+    
     
     
     tuple<int, int, double> t1(1, 2, 3.0);
@@ -168,8 +182,6 @@ int main(int argc, const char * argv[])
     json_t* pRet = NULL;
     mytuple.Dump(pRet);
     json_decref(pRet);
-    
-    
 #endif // end c++11 specific testing
 
     return 0;

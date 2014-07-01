@@ -23,6 +23,7 @@
 
 #if __cplusplus >= 201103L
 // Needed for the tuple class.
+#define c_plus_plus_11
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -48,6 +49,8 @@ namespace json {
 // 5.   Write unit tests to test all the different classes.
 //
 // 6.   JSON Tuple class generalized (check)
+//
+// 7.   Think if there is a good way to combine the pointer classes and the smart pointer classes. (enable_if ...)
 
 
 class CJSONValue
@@ -357,7 +360,7 @@ class CJSONValueArray : public CJSONValue
 };
 
 // This requires c++11.
-#if __cplusplus >= 201103L
+#ifdef c_plus_plus_11
 
 template< typename CVal, typename... TVals >
 class CJSONValueTuple : public CJSONValue
@@ -683,6 +686,11 @@ class CJSONValuePointer : public CJSONValue
                 // cout << "Pointer @ "<<*m_pValue<<endl;
                 if(!*m_pValue)
                 {
+                    //********** Note **********//
+                    // Caller must delete this
+                    // memory
+                    //**************************//
+                    
                     (*m_pValue) = new TVal; // must have default constructor. delete in the parent object.
                 }
                 
@@ -734,6 +742,11 @@ class CJSONValuePointer<TVal, CJSONValueObject> : public CJSONValue
                 
                 if(!(*m_pValue))
                 {
+                    //********** Note **********//
+                    // Caller must delete this
+                    // memory
+                    //**************************//
+
                     (*m_pValue) = new TVal; // must have default constructor.
                 }
                 
@@ -770,6 +783,115 @@ class CJSONValuePointer<TVal, CJSONValueObject> : public CJSONValue
         TVal*                   m_DefaultValue;
         CJSONValueObject*       m_pJson;
 };
+
+template<typename TVal, template< typename... > class SmartPointer, typename JVal>
+class CJSONValueSmartPointer : public CJSONValue
+{
+    public:
+        typedef TVal type;
+    
+        CJSONValueSmartPointer(const string& name, SmartPointer<TVal>* pval, TVal* defaultVal = NULL) : CJSONValue(JSON_NULL, name), m_pValue(pval), m_pJson(NULL), m_DefaultValue(defaultVal)
+        {
+            if(m_pValue)
+            {
+                // cout << "Pointer @ "<<*m_pValue<<endl;
+                if(!m_pValue->get())
+                {
+                    //********** Note **********//
+                    // SmartPointer should delete
+                    // memory
+                    //**************************//
+                    
+                    m_pValue->reset(new TVal);
+                }
+                
+                m_pJson = new JVal(name, m_pValue->get()); // delete in the desctructor.
+            }
+        }
+    
+    // Destructor.
+        ~CJSONValueSmartPointer()
+        {
+
+            std::cout << "Calling ~CJSONValueSmartPointer "<< m_pJson << std::endl;
+            if(m_pJson && !m_pJson->IsObject()) // do not delete json object just to be sure.
+                delete m_pJson;
+            m_pJson = NULL;
+        }
+    
+    // Overloaded Methods
+        bool Parse (const json_t* pVal)
+        {
+            return m_pJson->Parse(pVal);
+        }
+    
+        bool Dump (json_t*& pRet)
+        {
+            return m_pJson->Dump(pRet);
+        }
+    
+    // Accessor Methods
+        const TVal* GetValue() const { return *m_pValue; }
+        SmartPointer<TVal> GetDefaultValue() const { return m_DefaultValue; }
+    private:
+        SmartPointer<TVal>*     m_pValue;
+        SmartPointer<TVal>      m_DefaultValue;
+        JVal*                   m_pJson;
+};
+
+template<typename TVal, template< typename... > class SmartPointer>
+class CJSONValueSmartPointer<TVal, SmartPointer, CJSONValueObject> : public CJSONValue
+{
+    public:
+        typedef TVal type;
+    
+        CJSONValueSmartPointer(const string& name, SmartPointer<TVal>* pval, TVal* defaultVal = NULL) : CJSONValue(JSON_NULL, name), m_pValue(pval), m_pJson(NULL), m_DefaultValue(defaultVal)
+        {
+            if(m_pValue)
+            {
+                // cout << "Pointer @ "<<*m_pValue<<endl;
+                if(!m_pValue->get())
+                {
+                    //********** Note **********//
+                    // SmartPointer should delete
+                    // memory
+                    //**************************//
+                    
+                    m_pValue->reset(new TVal);
+                }
+
+                std::cout << "json object detected." << endl;
+                m_pValue->get()->SetupJSONObject();
+                m_pJson = m_pValue->get();
+            }
+        }
+    
+    // Destructor.
+        ~CJSONValueSmartPointer()
+        {
+            std::cout << "Calling ~CJSONValueSmartPointer "<< m_pJson << std::endl;
+        }
+    
+    // Overloaded Methods
+        bool Parse (const json_t* pVal)
+        {
+            return m_pJson->Parse(pVal);
+        }
+    
+        bool Dump (json_t*& pRet)
+        {
+            return m_pJson->Dump(pRet);
+        }
+    
+    // Accessor Methods
+        const TVal* GetValue() const { return *m_pValue; }
+        SmartPointer<TVal> GetDefaultValue() const { return m_DefaultValue; }
+    private:
+        SmartPointer<TVal>*     m_pValue;
+        SmartPointer<TVal>      m_DefaultValue;
+        CJSONValueObject*       m_pJson;
+};
+
 
 
 
