@@ -2,7 +2,7 @@
 
 #include "json_wrapper.h"
 
-
+using namespace std;
 
 class TestClass : public json::CJSONValueObject  // inherit the JSON Object for file parsing.
 {
