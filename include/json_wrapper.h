@@ -784,6 +784,7 @@ class CJSONValuePointer<TVal, CJSONValueObject> : public CJSONValue
         CJSONValueObject*       m_pJson;
 };
 
+#ifdef c_plus_plus_11
 template<typename TVal, template< typename... > class SmartPointer, typename JVal>
 class CJSONValueSmartPointer : public CJSONValue
 {
@@ -891,8 +892,7 @@ class CJSONValueSmartPointer<TVal, SmartPointer, CJSONValueObject> : public CJSO
         SmartPointer<TVal>      m_DefaultValue;
         CJSONValueObject*       m_pJson;
 };
-
-
+#endif
 
 
 // This class is used to perform the file IO and interface with the
@@ -957,9 +957,9 @@ class CJSONParser
         {
             bool bDumpSuccess = false;
             
-            if(m_pRoot) // Release ownership.
+            if(m_pRoot)
             {
-                json_decref(m_pRoot);
+                json_decref(m_pRoot); // Release ownership.
                 m_pRoot = NULL;
             }
             
