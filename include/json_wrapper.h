@@ -857,7 +857,7 @@ class CJSONValueSmartPointer<TVal, SmartPointer, CJSONValueObject> : public CJSO
                     // SmartPointer should delete
                     // memory
                     //**************************//
-                    std::cout << "Allocating mem." << std::endl;
+                    
                     m_pValue->reset(new TVal);
                 }
 
