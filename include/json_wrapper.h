@@ -355,9 +355,9 @@ class CJSONValueArray : public CJSONValue
         const TVal& GetValue() const { return *m_pValue; }
         const std::vector<TVal>& GetDefaultValue() const { return m_DefaultValue; }
     private:
-        std::vector<TVal>*   m_pValue;
-        std::vector<TVal>    m_DefaultValue;
-        TVal            m_DefaultArrayValue;
+        std::vector<TVal>*  m_pValue;
+        std::vector<TVal>   m_DefaultValue;
+        TVal                m_DefaultArrayValue;
 };
 
 // This requires c++11.
@@ -499,13 +499,12 @@ class CJSONValueTuple : public CJSONValue
 
 #endif // end c++11 specialization
 
-
-
-
+// TODO: make template class??
+// template <class DerivedClass>
 class CJSONValueObject : public CJSONValue
 {
     public:
-        typedef CJSONValueObject type; // TODO: think about this a bit more. I am not sur this will work for the std::tuple class may have to pass in the parent class as a template.
+        typedef CJSONValueObject type; // TODO: think about this a bit more. I am not sure this will work for the std::tuple class may have to pass in the parent class as a template.
     
         CJSONValueObject(const std::string& name, CJSONValueObject* pval) : CJSONValue(JSON_OBJECT, name), m_pDerived(pval) {}
         ~CJSONValueObject() { Destroy(); }
@@ -656,7 +655,7 @@ class CJSONValueObject : public CJSONValue
     
     private:
         CJSONValueObject*                               m_pDerived;         // ?? remove this ??
-        std::map < std::string, CJSONValue* >                     m_Map;              // map for each element in the object at this level. How to access data?
+        std::map < std::string, CJSONValue* >           m_Map;              // map for each element in the object at this level. How to access data?
 };
 
 
@@ -668,7 +667,7 @@ class CJSONValueObject : public CJSONValue
 // of memory will be required by the user so that all objects
 // are created and destroyed properly. This class will allocate
 // the memory if needed but will not destroy it.  That responsiblity
-// rests on the calling root object.
+// rests on the calling object.
 //
 // It is important to set *m_pValue to NULL if memory is needed to
 // be allocated.  Otherwise no memory will be allocated.
@@ -857,7 +856,7 @@ class CJSONValueSmartPointer<TVal, SmartPointer, CJSONValueObject> : public CJSO
                     // SmartPointer should delete
                     // memory
                     //**************************//
-                    
+                    std::cout << "Allocating mem." << std::endl;
                     m_pValue->reset(new TVal);
                 }
 
