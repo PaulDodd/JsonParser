@@ -53,7 +53,6 @@ namespace json {
 //
 // 7.   Think if there is a good way to combine the pointer classes and the smart pointer classes. ( std::enable_if ...)
 
-
 class CJSONValue
 {
     public:
@@ -499,14 +498,13 @@ class CJSONValueTuple : public CJSONValue
 
 #endif // end c++11 specialization
 
-// TODO: make template class??
-// template <class DerivedClass>
+template <class DerivedClass>
 class CJSONValueObject : public CJSONValue
 {
     public:
-        typedef CJSONValueObject type; // TODO: think about this a bit more. I am not sure this will work for the std::tuple class may have to pass in the parent class as a template.
+        typedef DerivedClass type;
     
-        CJSONValueObject(const std::string& name, CJSONValueObject* pval) : CJSONValue(JSON_OBJECT, name), m_pDerived(pval) {}
+        CJSONValueObject(const std::string& name, DerivedClass* pval) : CJSONValue(JSON_OBJECT, name), m_pDerived(pval) {}
         ~CJSONValueObject() { Destroy(); }
     
         void Destroy()
@@ -523,7 +521,6 @@ class CJSONValueObject : public CJSONValue
                 }
             }
             m_Map.clear();
-            
             // std::cout << "JSON object " << m_name << " destroyed! " << m_Map.size() << " objects remain." << std::endl;
         }
     
@@ -596,6 +593,10 @@ class CJSONValueObject : public CJSONValue
     // Abstract methods
         virtual void SetupJSONObject() = 0;
     
+        virtual bool LoadFromFile( const std::string& Path ); // not abstract. implementation below.
+    
+        virtual bool SaveToFile( const std::string& Path );   // not abstract. implementation below.
+
     // Class methods
         template<class TVal, class JVal>
         void AddNameValuePair(const std::string& name, TVal* pval)
@@ -637,7 +638,8 @@ class CJSONValueObject : public CJSONValue
             AddNameValuePair<std::vector<std::string>, CJSONValueArray<std::string, CJSONValueString> >(name, pval);
         }
     
-        void AddObjectValue(const std::string& name, CJSONValueObject* pval)
+        template<class TVal>
+        void AddObjectValue(const std::string& name, CJSONValueObject<TVal>* pval)
         {
             std::map < std::string, CJSONValue* >::iterator iter = m_Map.find(name);
             if(iter == m_Map.end())
@@ -650,12 +652,12 @@ class CJSONValueObject : public CJSONValue
             }
         }
     
-        CJSONValueObject* GetDerived()  { return m_pDerived; }
-        const CJSONValueObject& GetDefaultValue()   { return *m_pDerived; }
+        DerivedClass* GetDerived()  { return m_pDerived; }
+        const DerivedClass& GetDefaultValue()   { return *m_pDerived; }
     
     private:
-        CJSONValueObject*                               m_pDerived;         // ?? remove this ??
-        std::map < std::string, CJSONValue* >           m_Map;              // map for each element in the object at this level. How to access data?
+        DerivedClass*                               m_pDerived;
+        std::map < std::string, CJSONValue* >       m_Map;              // map for each element in the object at this level. How to access data?
 };
 
 
@@ -729,7 +731,7 @@ class CJSONValuePointer : public CJSONValue
 
 // Specialization for objects.
 template< typename TVal>
-class CJSONValuePointer<TVal, CJSONValueObject> : public CJSONValue
+class CJSONValuePointer<TVal, CJSONValueObject<TVal> > : public CJSONValue
 {
     public:
         typedef TVal type;
@@ -781,7 +783,7 @@ class CJSONValuePointer<TVal, CJSONValueObject> : public CJSONValue
     private:
         TVal**                  m_pValue;
         TVal*                   m_DefaultValue;
-        CJSONValueObject*       m_pJson;
+        CJSONValueObject<TVal>* m_pJson;
 };
 
 #ifdef c_plus_plus_11
@@ -841,7 +843,7 @@ class CJSONValueSmartPointer : public CJSONValue
 };
 
 template<typename TVal, template< typename... > class SmartPointer>
-class CJSONValueSmartPointer<TVal, SmartPointer, CJSONValueObject> : public CJSONValue
+class CJSONValueSmartPointer<TVal, SmartPointer, CJSONValueObject<TVal> > : public CJSONValue
 {
     public:
         typedef TVal type;
@@ -890,7 +892,7 @@ class CJSONValueSmartPointer<TVal, SmartPointer, CJSONValueObject> : public CJSO
     private:
         SmartPointer<TVal>*     m_pValue;
         SmartPointer<TVal>      m_DefaultValue;
-        CJSONValueObject*       m_pJson;
+        CJSONValueObject<TVal>* m_pJson;
 };
 #endif
 
@@ -936,7 +938,8 @@ class CJSONParser
             return true;
         }
     
-        bool ParseObjectFromArray(const int& index, CJSONValueObject* pOject)
+        template<class TVal>
+        bool ParseObjectFromArray(const int& index, CJSONValueObject<TVal>* pOject)
         {
             bool bParseSuccess = false;
             json_t* object_data = json_array_get(m_pRoot, index);
@@ -945,15 +948,15 @@ class CJSONParser
             
             return bParseSuccess;
         }
-    
-        bool ParseObject(CJSONValueObject* pOject)
+        template<class TVal>
+        bool ParseObject(CJSONValueObject<TVal>* pOject)
         {
             bool bParseSuccess = false;
             bParseSuccess = pOject->Parse(m_pRoot);
             return bParseSuccess;
         }
-    
-        bool DumpObjectToFile(const std::string& Path, CJSONValueObject* pOject)
+        template<class TVal>
+        bool DumpObjectToFile(const std::string& Path, CJSONValueObject<TVal>* pOject)
         {
             bool bDumpSuccess = false;
             
@@ -1031,6 +1034,39 @@ class CJSONParser
         json_error_t    m_LastError;
         size_t          m_Flags;
 };
+
+
+
+
+
+
+
+// Now implement the particulars
+template<class DerivedClass>
+inline bool CJSONValueObject<DerivedClass>::LoadFromFile( const std::string& Path )
+{
+    CJSONParser json;
+    json.LoadFromFile(Path);    // opens the JSON file and loads the data into buffer.
+    if(json.IsRootObject())     // expecting an object
+    {
+        return json.ParseObject(m_pDerived); // Parses all the data for this object.
+    }
+    else
+    {
+        return false;
+    }
+}
+
+template<class DerivedClass>
+inline bool CJSONValueObject<DerivedClass>::SaveToFile( const std::string& Path )
+{
+    CJSONParser json;
+    return json.DumpObjectToFile(Path, m_pDerived);
+}
+
+
+
+
 
 }
 

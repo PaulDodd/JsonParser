@@ -4,7 +4,7 @@
 
 using namespace std;
 
-class TestClass : public json::CJSONValueObject  // inherit the JSON Object for file parsing.
+class TestClass : public json::CJSONValueObject<TestClass>  // inherit the JSON Object for file parsing.
 {
     public:
         TestClass() : CJSONValueObject("", this), testInt(0), testString("") {}
@@ -23,7 +23,7 @@ class TestClass : public json::CJSONValueObject  // inherit the JSON Object for 
         string testString;
 };
 
-class tabular : public json::CJSONValueObject  // inherit the JSON Object for file parsing.
+class tabular : public json::CJSONValueObject<tabular>  // inherit the JSON Object for file parsing.
 {
     public:
         tabular() : CJSONValueObject("indent", this)
@@ -61,7 +61,7 @@ class tabular : public json::CJSONValueObject  // inherit the JSON Object for fi
                                 json::CJSONValueArray<  std::shared_ptr<TestClass>,
                                                         json::CJSONValueSmartPointer<   TestClass,
                                                                                         std::shared_ptr,
-                                                                                        json::CJSONValueObject > > >("ObjectPointerArray", &vec2);
+                                                                                        json::CJSONValueObject<TestClass> > > >("ObjectPointerArray", &vec2);
 
         #endif
         }
@@ -96,7 +96,7 @@ class tabular : public json::CJSONValueObject  // inherit the JSON Object for fi
     
 };
 
-class test : public json::CJSONValueObject
+class test : public json::CJSONValueObject<test>
 {
     public:
         test(): CJSONValueObject("", this) {}
@@ -173,7 +173,7 @@ int main(int argc, const char * argv[])
     
     
     tuple<int, int, double> t1(1, 2, 3.0);
-    tuple<json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueDouble> t2(  json::CJSONValueInt("Dummy", nullptr),
+    tuple<json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueDouble> t2( json::CJSONValueInt("Dummy", nullptr),
                                                                                 json::CJSONValueInt("Dummy", nullptr),
                                                                                 json::CJSONValueDouble("Dummy", nullptr));
     
