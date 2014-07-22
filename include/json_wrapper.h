@@ -53,6 +53,9 @@ namespace json {
 //
 // 7.   Think if there is a good way to combine the pointer classes and the smart pointer classes. ( std::enable_if ...)
 
+template<class DerivedClass> class CJSONValueObject;
+
+
 class CJSONValue
 {
     public:
@@ -77,6 +80,8 @@ class CJSONValue
     
     // Accessor Methods
         const std::string& GetName() const { return m_name; }
+        void SetName(std::string name ) { m_name = name; }
+    
         bool IsInt()    { return m_type == JSON_INTEGER; }
         bool IsFloat()  { return m_type == JSON_REAL; }
         bool IsString() { return m_type == JSON_STRING; }
@@ -122,9 +127,9 @@ class CJSONValue
         }
     
     protected:
-        json_t*     m_pJValue;  // buffer to hold values for dump on create in the dump command.
-        json_type   m_type;
-        std::string      m_name;
+        json_t*         m_pJValue;  // buffer to hold values for dump on create in the dump command.
+        json_type       m_type;
+        std::string     m_name;
 };
 
 template< class NVal, json_type _type_ >
@@ -359,6 +364,100 @@ class CJSONValueArray : public CJSONValue
         TVal                m_DefaultArrayValue;
 };
 
+template <class TVal>
+class CJSONValueArray<TVal, CJSONValueObject<TVal> > : public CJSONValue
+{
+    public:
+        typedef std::vector<TVal> type;
+    
+        CJSONValueArray(const std::string& name, std::vector<TVal>* pval, const std::vector<TVal>& defaultVal = std::vector<TVal>()) : CJSONValue(JSON_ARRAY, name), m_pValue(pval), m_DefaultValue(defaultVal)
+        {
+        }
+    
+        CJSONValueArray(const CJSONValueArray& src ) : CJSONValue(JSON_ARRAY, src.GetName())
+        {
+            // std::cout << "Copy constructor called" << std::endl;
+            CopyFrom(src);
+        }
+    
+        ~CJSONValueArray() {}
+    
+        bool Parse (const json_t* pVal)
+        {
+            bool bParseSuccess = false;
+            if(json_is_array(pVal))
+            {
+                bParseSuccess = true;
+                size_t n = json_array_size(pVal);
+                json_t* data = NULL;
+                
+                std::cout << "Array size = " << n << std::endl;
+                
+                for (size_t i = 0; i < n; i++)
+                {
+//                    std::cout << "loop start "<< m_pValue <<std::endl;
+                    TVal temp;
+                    temp.SetupJSONObject();
+                    
+                    char array_number[30]; // should be enough space.
+                    sprintf(&array_number[0], "-%zu", i);
+                    temp.SetName(m_name + "-" + std::string(array_number));
+                    data = json_array_get(pVal, i);
+//                    std::cout << "parsing array object "<< i  << " @ " << data << std::endl;
+                    bParseSuccess = temp.Parse(data) && bParseSuccess;
+//                    std::cout << "parse" << (bParseSuccess ? " successful" : " failed") << " adding element to "<< m_pValue << " with "<< m_pValue->size() << std::endl;
+                    m_pValue->push_back(temp);
+                }
+            }
+            else{
+                fprintf(stderr, "ERROR: %s is not an array as expected. \n", m_name.c_str());
+            }
+            std::cout << "X -- Parse()" << std::endl;
+            return bParseSuccess;
+        }
+    
+        bool Dump (json_t*& pRet)
+        {
+            bool bDumpSuccess = true;
+            pRet = json_array();
+            if(pRet)
+            {
+                for( size_t i = 0; i < m_pValue->size(); i++)
+                {
+                    json_t* pVal = NULL;
+                    m_pValue->at(i).SetupJSONObject();
+                    bDumpSuccess = m_pValue->at(i).Dump(pVal) && bDumpSuccess;
+                    
+                    if(pVal)
+                        bDumpSuccess = (json_array_append(pRet, pVal) != -1) && bDumpSuccess;
+                    else
+                        std::cout << "Error could not dump array element. "<< m_name << "-"<< i << std::endl;
+                }
+            }
+            else
+            {
+                bDumpSuccess = false;
+                std::cout << "Error! Could not dump array. "<< m_name << std::endl;
+            }
+            m_pJValue = pRet;
+            return bDumpSuccess;
+        }
+    
+    
+        const CJSONValueArray& CopyFrom( const CJSONValueArray& src )
+        {
+           m_pValue = src.GetValue();
+           m_DefaultValue = src.GetDefaultValue();
+        }
+    
+    // Accessor Methods
+        const std::vector<TVal>* GetValue() const { return m_pValue; }
+        const std::vector<TVal>& GetDefaultValue() const { return m_DefaultValue; }
+    private:
+        std::vector<TVal>*  m_pValue;
+        std::vector<TVal>   m_DefaultValue;;
+};
+
 // This requires c++11.
 #ifdef c_plus_plus_11
 
@@ -504,24 +603,36 @@ class CJSONValueObject : public CJSONValue
     public:
         typedef DerivedClass type;
     
-        CJSONValueObject(const std::string& name, DerivedClass* pval) : CJSONValue(JSON_OBJECT, name), m_pDerived(pval) {}
+        CJSONValueObject(const std::string& name, DerivedClass* pval) : CJSONValue(JSON_OBJECT, name), m_pDerived(pval) {  }
+    
+    #ifdef c_plus_plus_11
+        CJSONValueObject(const CJSONValueObject& src) = delete;
+    #else
+    private:
+        CJSONValueObject(const CJSONValueObject& src);
+    public:
+    #endif
+    
         ~CJSONValueObject() { Destroy(); }
     
         void Destroy()
         {
-            // std::cout << "Destroying " << m_name << " objects!" << std::endl;
+//            std::cout << "Destroying " << m_name << " object!"  << m_Map.size() << std::endl;
             std::map<std::string, CJSONValue* >::iterator iter;
+            size_t ct = 0;
             for(iter = m_Map.begin(); iter != m_Map.end(); iter++)
             {
                 if(!iter->second->IsObject()) // the memory was created by this class for all but objects.
                 {
+//                    std::cout << iter->second << std::endl;
                     if(iter->second)
                         delete iter->second;
                     iter->second = NULL;
+                    ct++;
                 }
             }
             m_Map.clear();
-            // std::cout << "JSON object " << m_name << " destroyed! " << m_Map.size() << " objects remain." << std::endl;
+//            std::cout << "JSON object " << m_name << " destroyed! " << ct << " values freed." << std::endl;
         }
     
     // Inherited Abstract Methods.
@@ -539,8 +650,9 @@ class CJSONValueObject : public CJSONValue
                     data = json_object_get(pVal, iter->first.c_str());
                     if(data)
                         bParseSuccess = iter->second->Parse(data) && bParseSuccess;
-                    else
-                        std::cout << "Key (" << iter->first << ") was not found in file." << std::endl;
+                    else{
+                        //std::cout << "Key (" << iter->first << ") was not found in file." << std::endl;
+                    }
                 }
             }
             else
@@ -608,7 +720,7 @@ class CJSONValueObject : public CJSONValue
             }
             else
             {
-                std::cout << "Already a key named "<< name << " is in the object. No action taken."<< std::endl;
+                //std::cout << "Already a key named "<< name << " is in the object. No action taken."<< std::endl;
             }
         }
     
@@ -648,7 +760,7 @@ class CJSONValueObject : public CJSONValue
             }
             else
             {
-                std::cout << "Already a key named "<< name << " is in the object. No action taken."<< std::endl;
+                //std::cout << "Already a key named "<< name << " is in the object. No action taken."<< std::endl;
             }
         }
     

@@ -2,14 +2,25 @@
 
 #include "json_wrapper.h"
 
+#include <sstream>
+
 using namespace std;
 
 class TestClass : public json::CJSONValueObject<TestClass>  // inherit the JSON Object for file parsing.
 {
     public:
-        TestClass() : CJSONValueObject("", this), testInt(0), testString("") {}
+        TestClass() : CJSONValueObject("TestClass", this), testInt(0), testString("") { }
     
-        TestClass(int i, string s) : CJSONValueObject("", this), testInt(i), testString(s) {}
+        TestClass(int i, string s) : CJSONValueObject("TestClass", this), testInt(i), testString(s) {}
+    
+        TestClass( const TestClass& src) : CJSONValueObject("TestClass", this)
+        {
+            cout << "copy called"<< endl;
+            CopyFrom(src);
+            SetupJSONObject();
+        }
+    
+        ~TestClass() { }//cout << "Destryoing TestClass object" << endl; Print(); }
     
         void SetupJSONObject()
         {
@@ -18,9 +29,26 @@ class TestClass : public json::CJSONValueObject<TestClass>  // inherit the JSON 
             AddStringValue("obj_test_string", &testString);
         }
     
+        void Print()
+        {
+            cout <<" int: " << testInt << endl;
+            cout <<" string: " << testString << endl;
+            
+        }
+    
+        const int& getint() const { return testInt; }
+        const string& getstring() const { return testString; }
+    
+        TestClass& CopyFrom(const TestClass& src)
+        {
+            testInt = src.getint();
+            testString = src.getstring();
+            return *this;
+        }
+    
     private:
-        int testInt;
-        string testString;
+        int     testInt;
+        string  testString;
 };
 
 class tabular : public json::CJSONValueObject<tabular>  // inherit the JSON Object for file parsing.
@@ -35,7 +63,11 @@ class tabular : public json::CJSONValueObject<tabular>  // inherit the JSON Obje
         ~tabular()
         {
             for(size_t i = 0; i < vec.size(); i++)
-                delete vec[i];
+            {
+                if( vec[i] )
+                    delete vec[i];
+                vec[i] = NULL;
+            }
             vec.clear();
             
 //            for(size_t i = 0; i < vec2.size(); i++)
@@ -64,6 +96,9 @@ class tabular : public json::CJSONValueObject<tabular>  // inherit the JSON Obje
                                                                                         json::CJSONValueObject<TestClass> > > >("ObjectPointerArray", &vec2);
 
         #endif
+            
+            
+        
         }
     
         void AllocateSomeMem()
@@ -99,13 +134,20 @@ class tabular : public json::CJSONValueObject<tabular>  // inherit the JSON Obje
 class test : public json::CJSONValueObject<test>
 {
     public:
-        test(): CJSONValueObject("", this) {}
+        test(): CJSONValueObject("test", this) { cout << &testObjVec << endl;}
         test(string path) : CJSONValueObject("", this) // root object has no name. (see parser comment)
         {
             SetupJSONObject();
             LoadFromFile(path);
+            
         }
-        ~test() {}
+        ~test() {
+//            cout << "destroying test" << endl;
+//            cout << "encoding:" << &encoding << endl;
+//            cout << "plugins:" << &plugins << endl;
+//            cout << "tabConfig:" << &tabConfig << endl;
+//            cout << "testObjVec:" << &testObjVec << endl;
+          }
     
     // Code to parse from file!!!
         void SetupJSONObject()
@@ -114,6 +156,10 @@ class test : public json::CJSONValueObject<test>
             this->AddStringArrayValue("plug-ins", &plugins);
             tabConfig.SetupJSONObject();
             this->AddObjectValue("indent", &tabConfig);
+            
+            AddNameValuePair<   std::vector< TestClass >,
+                                json::CJSONValueArray<  TestClass,
+                                                        json::CJSONValueObject<TestClass> > > ("ObjectArray", &testObjVec);
         }
     
         bool LoadFromFile(const string& Path)
@@ -140,16 +186,32 @@ class test : public json::CJSONValueObject<test>
                 printf("\t %s \n", plugins[i].c_str());
             }
             tabConfig.Print();
+            cout << "printing " << &testObjVec << endl;
+            for(size_t i = 0; i < testObjVec.size(); i++)
+            {
+                testObjVec[i].Print();
+            }
+            cout << "printing out " << &testObjVec << endl;
         }
         void AllocateSomeMem()
         {
             tabConfig.AllocateSomeMem();
+            for(size_t i = 0; i < 2; i++)
+            {
+                stringstream ss;
+                ss << i;
+                string s;
+                ss>>s;
+                TestClass t(i, s);
+                testObjVec.push_back(t);
+            }
         }
     
     private:
-        string          encoding;
-        vector<string>  plugins;
-        tabular         tabConfig;
+        string              encoding;
+        vector<string>      plugins;
+        tabular             tabConfig;
+        vector<TestClass>   testObjVec;
     
 };
 
@@ -164,26 +226,34 @@ int main(int argc, const char * argv[])
     }
     
 #ifdef c_plus_plus_11                       // c++11 specific testing
-    std::shared_ptr<int> pShared(new int);
-    std::unique_ptr<int> pUnique(new int);
-    
-    json::CJSONValueSmartPointer<int, std::shared_ptr, json::CJSONValueInt> jsonShared("SharedPtr", &pShared);
-    json::CJSONValueSmartPointer<int, std::unique_ptr, json::CJSONValueInt> jsonUnique("UniquePtr", &pUnique);
-    
-    
-    
-    tuple<int, int, double> t1(1, 2, 3.0);
-    tuple<json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueDouble> t2( json::CJSONValueInt("Dummy", nullptr),
-                                                                                json::CJSONValueInt("Dummy", nullptr),
-                                                                                json::CJSONValueDouble("Dummy", nullptr));
-    
-    json::CJSONValueTuple<      tuple<int, int, double>,    // Templates galore....
-                                json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueDouble> mytuple("test", &t1);
-    json_t* pRet = NULL;
-    mytuple.Dump(pRet);
-    json_decref(pRet);
+//    std::shared_ptr<int> pShared(new int);
+//    std::unique_ptr<int> pUnique(new int);
+//    
+//    json::CJSONValueSmartPointer<int, std::shared_ptr, json::CJSONValueInt> jsonShared("SharedPtr", &pShared);
+//    json::CJSONValueSmartPointer<int, std::unique_ptr, json::CJSONValueInt> jsonUnique("UniquePtr", &pUnique);
+//    
+//    
+//    
+//    tuple<int, int, double> t1(1, 2, 3.0);
+//    tuple<json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueDouble> t2( json::CJSONValueInt("Dummy", nullptr),
+//                                                                                json::CJSONValueInt("Dummy", nullptr),
+//                                                                                json::CJSONValueDouble("Dummy", nullptr));
+//    
+//    json::CJSONValueTuple<      tuple<int, int, double>,    // Templates galore....
+//                                json::CJSONValueInt, json::CJSONValueInt, json::CJSONValueDouble> mytuple("test", &t1);
+//    json_t* pRet = NULL;
+//    mytuple.Dump(pRet);
+//    json_decref(pRet);
 #endif // end c++11 specific testing
 
+    test parseTest;
+    parseTest.SetupJSONObject();
+    parseTest.LoadFromFile("dump_smart_pointer.json");
+
+    parseTest.Print();
+    
+    
+    cout << "Exiting program" << endl;
     return 0;
 }
 
