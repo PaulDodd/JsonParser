@@ -160,9 +160,14 @@ class CJSONValueNumber : public CJSONValue // may need an unsigned version of th
         bool Dump (json_t*& pRet)
         {
             if(IsInt())
+            {
                 pRet = json_integer(*m_pValue);
+            }
             else
+            {
                 pRet = json_real(*m_pValue);
+                std::cout << "pRet @ " << pRet << " val = " << *m_pValue << " @ "<< m_pValue << endl;
+            }
             
             m_pJValue = pRet;
             return pRet != NULL;
