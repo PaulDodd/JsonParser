@@ -35,7 +35,7 @@
 
 
 namespace json {
-
+using namespace std;
 // TODOs:
 // 1.   make general numerical class with template. and that all numerical classes are compatible.
 //      this will make certian use cases possible and code more flexible. (check)
@@ -159,6 +159,10 @@ class CJSONValueNumber : public CJSONValue // may need an unsigned version of th
     
         bool Dump (json_t*& pRet)
         {
+            if( isnan(*m_pValue) || isinf(*m_pValue))
+            {
+                cout << "Warning! trying to dump nan/inf value to " << m_name << endl;
+            }
             if(IsInt())
             {
                 pRet = json_integer(*m_pValue);
@@ -166,7 +170,6 @@ class CJSONValueNumber : public CJSONValue // may need an unsigned version of th
             else
             {
                 pRet = json_real(*m_pValue);
-                std::cout << "pRet @ " << pRet << " val = " << *m_pValue << " @ "<< m_pValue << endl;
             }
             
             m_pJValue = pRet;
