@@ -12,6 +12,7 @@
 #include <jansson.h>
 
 // Standard library headers
+#include <cmath>
 #include <fstream>
 #include <cstdlib>
 #include <stdio.h>
@@ -613,14 +614,17 @@ class CJSONValueObject : public CJSONValue
     
         CJSONValueObject(const std::string& name, DerivedClass* pval) : CJSONValue(JSON_OBJECT, name), m_pDerived(pval) {  }
     
+    /* Want to delete any way of copying this object -- is there any other way? */
     #ifdef c_plus_plus_11
-        CJSONValueObject(const CJSONValueObject& src) = delete;
+        CJSONValueObject( const CJSONValueObject<DerivedClass>& src) = delete;
+        CJSONValueObject<DerivedClass>& operator=(const CJSONValueObject<DerivedClass>& src) = delete;
     #else
     private:
-        CJSONValueObject(const CJSONValueObject& src);
+        CJSONValueObject(const CJSONValueObject<DerivedClass>& src);
+        CJSONValueObject<DerivedClass>& operator=(const CJSONValueObject<DerivedClass>& src);
     public:
     #endif
-    
+    /****************************************************************************/
         ~CJSONValueObject() { Destroy(); }
     
         void Destroy()
