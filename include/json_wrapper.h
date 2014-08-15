@@ -160,7 +160,7 @@ class CJSONValueNumber : public CJSONValue // may need an unsigned version of th
     
         bool Dump (json_t*& pRet)
         {
-            if( isnan(*m_pValue) || isinf(*m_pValue))
+            if( std::isnan(*m_pValue) || std::isinf(*m_pValue))
             {
                 cout << "Warning! trying to dump nan/inf value to " << m_name << endl;
             }
