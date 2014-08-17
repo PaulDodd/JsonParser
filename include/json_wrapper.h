@@ -21,11 +21,12 @@
 #include <vector>
 #include <map>
 #include <stdarg.h>
+#include <memory>
 
 #if __cplusplus >= 201103L
 // Needed for the std::tuple class.
 #ifndef c_plus_plus_11
-#define c_plus_plus_11
+    #define c_plus_plus_11
 #endif
 
 #include <tuple>

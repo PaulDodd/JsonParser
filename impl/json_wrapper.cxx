@@ -1,7 +1,6 @@
 
 
 #include "json_wrapper.h"
-
 #include <sstream>
 
 using namespace std;
@@ -125,9 +124,9 @@ class tabular : public json::CJSONValueObject<tabular>  // inherit the JSON Obje
         int                     length;
         bool                    bUseSpace;
         vector<int*>            vec;
-        #ifdef c_plus_plus_11
+    #ifdef c_plus_plus_11
         vector< std::shared_ptr<TestClass> >      vec2;
-        #endif
+    #endif
     
 };
 
