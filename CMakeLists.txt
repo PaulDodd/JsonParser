@@ -1,7 +1,8 @@
 cmake_minimum_required (VERSION 2.8)
 #SET(CMAKE_VERBOSE_MAKEFILE ON)
-
-SET (CMAKE_CXX_FLAGS          "${CMAKE_CXX_FLAGS} -std=c++11 -stdlib=libc++")
+SET(CMAKE_CXX_COMPILER "gcc")
+SET(CMAKE_C_COMPILER "gcc")
+SET (CMAKE_CXX_FLAGS          "${CMAKE_CXX_FLAGS}  -fabi-version=7 -lstdc++ -ljansson")# -stdlib=libc++ -lstdc++ -std=c++11
 SET (CMAKE_CXX_FLAGS          "${CMAKE_CXX_FLAGS} -Wno-deprecated")
 
 MESSAGE("C++ Compiler: ${CMAKE_CXX_COMPILER} Flags: ${CMAKE_CXX_FLAGS}")
@@ -13,7 +14,7 @@ set (JSON_VERSION_MINOR 0)
 
 include_directories("/opt/local/include")
 link_directories("/opt/local/lib")
-SET (CMAKE_CXX_FLAGS          "${CMAKE_CXX_FLAGS} -ljansson")
+#SET (CMAKE_CXX_FLAGS          "${CMAKE_CXX_FLAGS} -ljansson")
 
 
 # The project directories.

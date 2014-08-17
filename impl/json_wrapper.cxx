@@ -45,7 +45,7 @@ class TestClass : public json::CJSONValueObject<TestClass>  // inherit the JSON 
             testString = src.getstring();
             return *this;
         }
-    
+        TestClass& operator=(const TestClass& src) { return CopyFrom(src); }
     private:
         int     testInt;
         string  testString;
