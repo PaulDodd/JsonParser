@@ -1,6 +1,6 @@
 
 # observed that these FLAGS are not being updated
-SET (CMAKE_CXX_FLAGS          "${CMAKE_CXX_FLAGS} -fabi-version=7 -lstdc++ -ljansson")# -stdlib=libc++ -lstdc++ -std=c++11
+SET (CMAKE_CXX_FLAGS          "${CMAKE_CXX_FLAGS} -std=c++11 -fabi-version=7 -lstdc++ -ljansson")# -stdlib=libc++ -lstdc++ -std=c++11
 SET (CMAKE_CXX_FLAGS          "${CMAKE_CXX_FLAGS} -Wno-deprecated")
 
 
