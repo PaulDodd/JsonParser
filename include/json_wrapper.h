@@ -401,7 +401,7 @@ class CJSONValueArray<TVal, CJSONValueObject<TVal> > : public CJSONValue
                 size_t n = json_array_size(pVal);
                 json_t* data = NULL;
                 
-                std::cout << "Array size = " << n << std::endl;
+                //std::cout << "Array size = " << n << std::endl;
                 
                 for (size_t i = 0; i < n; i++)
                 {
@@ -422,7 +422,7 @@ class CJSONValueArray<TVal, CJSONValueObject<TVal> > : public CJSONValue
             else{
                 fprintf(stderr, "ERROR: %s is not an array as expected. \n", m_name.c_str());
             }
-            std::cout << "X -- Parse()" << std::endl;
+            //std::cout << "X -- Parse()" << std::endl;
             return bParseSuccess;
         }
     
