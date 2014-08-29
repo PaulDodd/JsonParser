@@ -140,7 +140,7 @@ class CJSONValueNumber : public CJSONValue // may need an unsigned version of th
     public:
         typedef NVal type;
     
-        CJSONValueNumber(const std::string& name, NVal * pval, const NVal& defaultVal = 0) : CJSONValue(_type_, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
+        CJSONValueNumber(const std::string& name, NVal * pval, const NVal& defaultVal = 0) : CJSONValue(_type_, name), m_DefaultValue(defaultVal), m_pValue(pval)  {}
         ~CJSONValueNumber() {}
     
     // Overloaded Methods
@@ -197,7 +197,7 @@ class CJSONValueString : public CJSONValue
     public:
         typedef std::string type;
     
-        CJSONValueString(const std::string& name, std::string* pval, const std::string& defaultVal = "") : CJSONValue(JSON_STRING, name), m_pValue(pval), m_DefaultValue(defaultVal) {}
+        CJSONValueString(const std::string& name, std::string* pval, const std::string& defaultVal = "") : CJSONValue(JSON_STRING, name),  m_DefaultValue(defaultVal), m_pValue(pval) {}
         ~CJSONValueString() {}
     
         bool Parse (const json_t* pVal)
@@ -236,7 +236,7 @@ class CJSONValueBool : public CJSONValue
     public:
         typedef bool type;
     
-        CJSONValueBool(const std::string& name, bool * pval, const bool& defaultVal = false) : CJSONValue(JSON_TRUE, name), m_pValue(pval), m_DefaultValue(defaultVal)  {}
+        CJSONValueBool(const std::string& name, bool * pval, const bool& defaultVal = false) : CJSONValue(JSON_TRUE, name), m_DefaultValue(defaultVal), m_pValue(pval)  {}
         ~CJSONValueBool() {}
     
         bool Parse (const json_t* pVal)
@@ -973,7 +973,7 @@ class CJSONValueSmartPointer<TVal, SmartPointer, CJSONValueObject<TVal> > : publ
     public:
         typedef TVal type;
     
-        CJSONValueSmartPointer(const std::string& name, SmartPointer<TVal>* pval, TVal* defaultVal = NULL) : CJSONValue(JSON_NULL, name), m_pValue(pval), m_pJson(NULL), m_DefaultValue(defaultVal)
+        CJSONValueSmartPointer(const std::string& name, SmartPointer<TVal>* pval, TVal* defaultVal = NULL) : CJSONValue(JSON_NULL, name), m_pValue(pval),  m_DefaultValue(defaultVal), m_pJson(NULL)
         {
             if(m_pValue)
             {
