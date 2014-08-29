@@ -138,7 +138,6 @@ class test : public json::CJSONValueObject<test>
         {
             SetupJSONObject();
             LoadFromFile(path);
-            
         }
         ~test() {
 //            cout << "destroying test" << endl;

@@ -38,6 +38,8 @@
 
 namespace json {
 using namespace std;
+
+
 // TODOs:
 // 1.   make general numerical class with template. and that all numerical classes are compatible.
 //      this will make certian use cases possible and code more flexible. (check)
@@ -54,6 +56,10 @@ using namespace std;
 // 6.   JSON Tuple class generalized (check)
 //
 // 7.   Think if there is a good way to combine the pointer classes and the smart pointer classes. ( std::enable_if ...)
+//
+// 8.   CJSONValue permissions: read permission, write permission, update permission to help support legacy file formats
+//
+
 
 template<class DerivedClass> class CJSONValueObject;
 
