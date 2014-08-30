@@ -60,6 +60,7 @@ using namespace std;
 // 8.   CJSONValue permissions: read permission, write permission, update permission to help support legacy file formats
 //
 
+#define JSON_OBJECT_TRACK_MISSING_VALUES_DEFAULT true
 
 template<class DerivedClass> class CJSONValueObject;
 
@@ -75,9 +76,7 @@ class CJSONValue
         }
         virtual ~CJSONValue()
         {
-            //std::cout << " N ~CJSONValue " << TypeToString() << " " << m_pJValue << " has " << (m_pJValue ? m_pJValue->refcount : 0) << std::endl;
-            json_decref( m_pJValue );
-            //std::cout << " X ~CJSONValue " << TypeToString() << " " << m_pJValue << " has " << (m_pJValue ? m_pJValue->refcount : 0) << std::endl;
+            ClearJValue();
         }
     
     // Abstract methods
@@ -85,7 +84,12 @@ class CJSONValue
         virtual bool Dump (json_t*& pRet) = 0;
     
         virtual void Setup(size_t argc, ...) {} // to make virtual abstract?
-    
+    // Class Method
+        void ClearJValue()
+        {
+            json_decref( m_pJValue );
+            m_pJValue = NULL;
+        }
     // Accessor Methods
         const std::string& GetName() const { return m_name; }
         void SetName(std::string name ) { m_name = name; }
@@ -167,6 +171,7 @@ class CJSONValueNumber : public CJSONValue // may need an unsigned version of th
     
         bool Dump (json_t*& pRet)
         {
+            ClearJValue();
             if( std::isnan(*m_pValue) || std::isinf(*m_pValue))
             {
                 cout << "Warning! trying to dump nan/inf value to " << m_name << endl;
@@ -211,7 +216,6 @@ class CJSONValueString : public CJSONValue
             bool bParseSuccess = false;
             if(json_is_string(pVal))
             {
-                // std::cout << "JSON std::string found" << std::endl;
                 bParseSuccess = true;
                 *m_pValue = json_string_value(pVal);
             }
@@ -223,6 +227,7 @@ class CJSONValueString : public CJSONValue
     
         bool Dump (json_t*& pRet)
         {
+            ClearJValue();
             pRet = json_string(m_pValue->c_str());
             if(!pRet) std::cout << "Error could not dump std::string " << m_name << std::endl;
             m_pJValue = pRet;
@@ -250,7 +255,6 @@ class CJSONValueBool : public CJSONValue
             bool bParseSuccess = false;
             if(json_is_boolean(pVal))
             {
-                // std::cout << "JSON boolean found" << std::endl;
                 bParseSuccess = true;
                 *m_pValue = json_is_true(pVal);
             }
@@ -262,9 +266,8 @@ class CJSONValueBool : public CJSONValue
     
         bool Dump (json_t*& pRet)
         {
-//            std::cout << "boolean value = " << boolalpha << *m_pValue << " @ " << m_pValue << " -> "<< pRet << std::endl;
+            ClearJValue();
             pRet = (*m_pValue) ? json_true() : json_false();
-//            std::cout << "json boolean value @ " << pRet << std::endl;
             m_pJValue = pRet;
             return pRet != NULL;
         }
@@ -295,7 +298,6 @@ class CJSONValueArray : public CJSONValue
     
         CJSONValueArray(const CJSONValueArray& src ) : CJSONValue(JSON_ARRAY, src.GetName())
         {
-            // std::cout << "Copy constructor called" << std::endl;
             CopyFrom(src);
         }
     
@@ -309,8 +311,6 @@ class CJSONValueArray : public CJSONValue
                 bParseSuccess = true;
                 size_t n = json_array_size(pVal);
                 json_t* data;
-                
-                // std::cout << "Array size = " << n << std::endl;
                 
                 for (size_t i = 0; i < n; i++)
                 {
@@ -334,6 +334,7 @@ class CJSONValueArray : public CJSONValue
     
         bool Dump (json_t*& pRet)
         {
+            ClearJValue();
             bool bDumpSuccess = true;
             pRet = json_array();
             if(pRet)
@@ -345,9 +346,7 @@ class CJSONValueArray : public CJSONValue
                     
                     JVal tjson("", &temp);
                     
-                    // std::cout << "pVal @ " << pVal << std::endl;
                     bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
-                    // std::cout << "pVal @ " << pVal << std::endl;
                     
                     if(pVal)
                         bDumpSuccess = (json_array_append(pRet, pVal) != -1) && bDumpSuccess;
@@ -392,7 +391,6 @@ class CJSONValueArray<TVal, CJSONValueObject<TVal> > : public CJSONValue
     
         CJSONValueArray(const CJSONValueArray& src ) : CJSONValue(JSON_ARRAY, src.GetName())
         {
-            // std::cout << "Copy constructor called" << std::endl;
             CopyFrom(src);
         }
     
@@ -407,11 +405,8 @@ class CJSONValueArray<TVal, CJSONValueObject<TVal> > : public CJSONValue
                 size_t n = json_array_size(pVal);
                 json_t* data = NULL;
                 
-                //std::cout << "Array size = " << n << std::endl;
-                
                 for (size_t i = 0; i < n; i++)
                 {
-//                    std::cout << "loop start "<< m_pValue <<std::endl;
                     TVal temp;
                     temp.SetupJSONObject();
                     
@@ -419,21 +414,19 @@ class CJSONValueArray<TVal, CJSONValueObject<TVal> > : public CJSONValue
                     sprintf(&array_number[0], "-%zu", i);
                     temp.SetName(m_name + "-" + std::string(array_number));
                     data = json_array_get(pVal, i);
-//                    std::cout << "parsing array object "<< i  << " @ " << data << std::endl;
                     bParseSuccess = temp.Parse(data) && bParseSuccess;
-//                    std::cout << "parse" << (bParseSuccess ? " successful" : " failed") << " adding element to "<< m_pValue << " with "<< m_pValue->size() << std::endl;
                     m_pValue->push_back(temp);
                 }
             }
             else{
                 fprintf(stderr, "ERROR: %s is not an array as expected. \n", m_name.c_str());
             }
-            //std::cout << "X -- Parse()" << std::endl;
             return bParseSuccess;
         }
     
         bool Dump (json_t*& pRet)
         {
+            ClearJValue();
             bool bDumpSuccess = true;
             pRet = json_array();
             if(pRet)
@@ -485,8 +478,6 @@ class CJSONValueTuple : public CJSONValue
     
         CJSONValueTuple(const std::string& name, CVal* pval, const CVal&& defaultVal = CVal()) : CJSONValue(JSON_ARRAY, name), m_pValue(pval), m_DefaultValue(defaultVal)
         {
-            // std::cout << "Tuple contains " << sizeof...(TVals) << " elements..." << std::endl;
-            //assert(sizeof...(TVals) == std::tuple_size<CVal>::value);
         }
     
         ~CJSONValueTuple() {}
@@ -507,6 +498,7 @@ class CJSONValueTuple : public CJSONValue
     
         bool Dump (json_t*& pRet)
         {
+            ClearJValue();
             bool bDumpSuccess = true;
             pRet = json_array();
             if(pRet)
@@ -544,7 +536,6 @@ class CJSONValueTuple : public CJSONValue
             data = json_array_get(pVal, I);
             typename std::tuple_element<I, CVal>::type* pElem = &std::get<I>(*m_pValue);
             std::unique_ptr<CJSONValue> pJson = CreateJSONValue<typename std::tuple_element<I, CVal>::type, TVals...>(I, elemName, pElem);
-            // std::cout << "Parsing type " << pJson->TypeToString() << " @ "<< I << std::endl;
             bParseSuccess = pJson->Parse(data);
             
             return ParseTupleElements<I+1>(pVal) && bParseSuccess;
@@ -565,7 +556,6 @@ class CJSONValueTuple : public CJSONValue
             auto pElem = &std::get<I>(*m_pValue);
             
             std::unique_ptr<CJSONValue> pJson = CreateJSONValue<typename std::tuple_element<I, CVal>::type, TVals...>(I, elemName, pElem);
-            // std::cout << "Dumping type " << pJson->TypeToString() << " @ "<< I << std::endl;
             pJson->Dump(pVal);
             
             if(pVal)
@@ -619,7 +609,7 @@ class CJSONValueObject : public CJSONValue
     public:
         typedef DerivedClass type;
     
-        CJSONValueObject(const std::string& name, DerivedClass* pval) : CJSONValue(JSON_OBJECT, name), m_pDerived(pval) {  }
+        CJSONValueObject(const std::string& name, DerivedClass* pval) : CJSONValue(JSON_OBJECT, name), m_pDerived(pval), m_bUpdate(JSON_OBJECT_TRACK_MISSING_VALUES_DEFAULT) {  }
     
     /* Want to delete any way of copying this object -- is there any other way? */
     #ifdef c_plus_plus_11
@@ -636,14 +626,12 @@ class CJSONValueObject : public CJSONValue
     
         void Destroy()
         {
-//            std::cout << "Destroying " << m_name << " object!"  << m_Map.size() << std::endl;
-            std::map<std::string, CJSONValue* >::iterator iter;
+            
             size_t ct = 0;
-            for(iter = m_Map.begin(); iter != m_Map.end(); iter++)
+            for(std::map<std::string, CJSONValue* >::iterator iter = m_Map.begin(); iter != m_Map.end(); iter++)
             {
                 if(!iter->second->IsObject()) // the memory was created by this class for all but objects.
                 {
-//                    std::cout << iter->second << std::endl;
                     if(iter->second)
                         delete iter->second;
                     iter->second = NULL;
@@ -651,26 +639,56 @@ class CJSONValueObject : public CJSONValue
                 }
             }
             m_Map.clear();
-//            std::cout << "JSON object " << m_name << " destroyed! " << ct << " values freed." << std::endl;
+            for(std::map<std::string, json_t* >::iterator iter = m_MissingValues.begin(); iter != m_MissingValues.end(); iter++)
+            {
+                json_decref(iter->second);
+            }
+            m_MissingValues.clear();
         }
-    
+
+        void ClearBuffer()
+        {
+            ClearJValue();
+            std::map<std::string, CJSONValue* >::iterator iter;
+            for(iter = m_Map.begin(); iter != m_Map.end(); iter++)
+            {
+                iter->second->ClearJValue();
+            }
+        }
+
     // Inherited Abstract Methods.
         virtual bool Parse (const json_t* pVal)
         {
             bool bParseSuccess = false;
-            // std::cout << "Calling CJSONValueObject::Parse" << std::endl;
             if(json_is_object(pVal))
             {
-                bParseSuccess = true;
-                json_t* data;
-                std::map<std::string, CJSONValue* >::iterator iter;
-                for(iter = m_Map.begin(); iter != m_Map.end(); iter++)
+//                bParseSuccess = true;
+//                json_t* data;
+//                std::map<std::string, CJSONValue* >::iterator iter;
+//                for(iter = m_Map.begin(); iter != m_Map.end(); iter++)
+//                {
+//                    data = json_object_get(pVal, iter->first.c_str());
+//                    if(data)
+//                        bParseSuccess = iter->second->Parse(data) && bParseSuccess;
+//                    else{
+//                        //std::cout << "Key (" << iter->first << ") was not found in file." << std::endl;
+//                    }
+//                }
+                const char * key;
+                json_t* val;
+                json_object_foreach((json_t*)pVal, key, val)
                 {
-                    data = json_object_get(pVal, iter->first.c_str());
-                    if(data)
-                        bParseSuccess = iter->second->Parse(data) && bParseSuccess;
-                    else{
-                        //std::cout << "Key (" << iter->first << ") was not found in file." << std::endl;
+                    string name(key);
+                    std::map<std::string, CJSONValue* >::iterator elem;
+                    elem = m_Map.find(name);
+                    if(elem != m_Map.end())
+                    {
+                        bParseSuccess = elem->second->Parse(val) && bParseSuccess;
+                    }
+                    else if(m_bUpdate)
+                    {
+                        json_incref(val); // keep the data around.
+                        m_MissingValues.insert(pair<string, json_t*>(name, val));
                     }
                 }
             }
@@ -684,17 +702,14 @@ class CJSONValueObject : public CJSONValue
     
         virtual bool Dump (json_t*& pRet)
         {
-            //std::cout << "Calling CJSONValueObject::Dump" << std::endl;
+            ClearJValue();
             bool bDumpSuccess = true;
             
             pRet = json_object();
             
-            //std::cout << "Dumping object " << m_name << " @ " << pRet << std::endl;
-            
             if(pRet)
             {
-                std::map<std::string, CJSONValue* >::iterator iter;
-                for(iter = m_Map.begin(); iter != m_Map.end(); iter++)
+                for(std::map<std::string, CJSONValue* >::iterator iter = m_Map.begin(); iter != m_Map.end(); iter++)
                 {
                     json_t* value = NULL;
                     if ( iter->second->Dump(value) )
@@ -709,6 +724,18 @@ class CJSONValueObject : public CJSONValue
                     {
                         bDumpSuccess = false;
                         std::cout << "Error! Could not dump " << iter->first << std::endl;
+                    }
+                }
+
+                if(bDumpSuccess && m_bUpdate) // add the missing data
+                {
+                    for(std::map<std::string, json_t* >::iterator iter = m_MissingValues.begin(); iter != m_MissingValues.end(); iter++)
+                    {
+                        if ( json_object_set(pRet, iter->first.c_str(), iter->second) == -1)
+                        {
+                            bDumpSuccess = false;
+                            std::cout << "Error! Could not add " << iter->first << " to object of size "<< json_object_size(pRet) << std::endl;
+                        }
                     }
                 }
             }
@@ -789,6 +816,8 @@ class CJSONValueObject : public CJSONValue
     private:
         DerivedClass*                               m_pDerived;
         std::map < std::string, CJSONValue* >       m_Map;              // map for each element in the object at this level. How to access data?
+        bool                                        m_bUpdate;
+        map<string, json_t*>                        m_MissingValues;
 };
 
 
@@ -816,7 +845,6 @@ class CJSONValuePointer : public CJSONValue
         {
             if(m_pValue)
             {
-                // std::cout << "Pointer @ "<<*m_pValue<< std::endl;
                 if(!*m_pValue)
                 {
                     //********** Note **********//
@@ -834,7 +862,6 @@ class CJSONValuePointer : public CJSONValue
     // Destructor.
         ~CJSONValuePointer()
         {
-            // std::cout << "Calling ~CJSONValuePointer "<< m_pJson << std::endl;
             if(m_pJson && !m_pJson->IsObject()) // do not delete json object.
                 delete m_pJson;
             m_pJson = NULL;
@@ -867,12 +894,10 @@ class CJSONValuePointer<TVal, CJSONValueObject<TVal> > : public CJSONValue
     public:
         typedef TVal type;
     
-        CJSONValuePointer(const std::string& name, TVal** pval, TVal* defaultVal = NULL) : CJSONValue(JSON_NULL, name), m_pValue(pval), m_pJson(NULL), m_DefaultValue(defaultVal)
+        CJSONValuePointer(const std::string& name, TVal** pval, TVal* defaultVal = NULL) : CJSONValue(JSON_NULL, name), m_pValue(pval), m_DefaultValue(defaultVal), m_pJson(NULL)
         {
             if(m_pValue)
             {
-                // std::cout << "Pointer to JSON object detected @ " << *m_pValue << std::endl;
-                
                 if(!(*m_pValue))
                 {
                     //********** Note **********//
@@ -892,7 +917,6 @@ class CJSONValuePointer<TVal, CJSONValueObject<TVal> > : public CJSONValue
     // Destructor.
         ~CJSONValuePointer()
         {
-            // std::cout << "Calling ~CJSONValuePointer<TVal, CJSONValueObject>"<< m_pJson << std::endl;
             // nothing to delete this time
         }
     
@@ -928,7 +952,6 @@ class CJSONValueSmartPointer : public CJSONValue
         {
             if(m_pValue)
             {
-                // std::cout << "Pointer @ "<<*m_pValue<< std::endl;
                 if(!m_pValue->get())
                 {
                     //********** Note **********//
@@ -946,8 +969,6 @@ class CJSONValueSmartPointer : public CJSONValue
     // Destructor.
         ~CJSONValueSmartPointer()
         {
-
-            // std::cout << "Calling ~CJSONValueSmartPointer "<< m_pJson << std::endl;
             if(m_pJson && !m_pJson->IsObject()) // do not delete json object just to be sure.
                 delete m_pJson;
             m_pJson = NULL;
@@ -983,7 +1004,6 @@ class CJSONValueSmartPointer<TVal, SmartPointer, CJSONValueObject<TVal> > : publ
         {
             if(m_pValue)
             {
-                // std::cout << "Pointer @ "<<*m_pValue<< std::endl;
                 if(!m_pValue->get())
                 {
                     //********** Note **********//
@@ -994,7 +1014,6 @@ class CJSONValueSmartPointer<TVal, SmartPointer, CJSONValueObject<TVal> > : publ
                     m_pValue->reset(new TVal);
                 }
 
-                // std::cout << "json object detected." << std::endl;
                 m_pValue->get()->SetupJSONObject();
                 m_pJson = m_pValue->get();
             }
@@ -1003,7 +1022,6 @@ class CJSONValueSmartPointer<TVal, SmartPointer, CJSONValueObject<TVal> > : publ
     // Destructor.
         ~CJSONValueSmartPointer()
         {
-            // std::cout << "Calling ~CJSONValueSmartPointer "<< m_pJson << std::endl;
         }
     
     // Overloaded Methods
@@ -1042,9 +1060,7 @@ class CJSONParser
     
         ~CJSONParser()
         {
-            // std::cout << " N ~CJSONParser " << " " << m_pRoot << " has " << (m_pRoot ? m_pRoot->refcount : 0) << std::endl;
             json_decref(m_pRoot); // Realease ownership
-            // std::cout << " N ~CJSONParser " << " " << m_pRoot << " has " << (m_pRoot ? m_pRoot->refcount : 0) << std::endl;
         }
     
         bool Load(const char* pBuffer)
@@ -1074,11 +1090,11 @@ class CJSONParser
         {
             bool bParseSuccess = false;
             json_t* object_data = json_array_get(m_pRoot, index);
-            // std::cout << "object data = " << object_data << std::endl;
             bParseSuccess = pOject->Parse(object_data);
             
             return bParseSuccess;
         }
+    
         template<class TVal>
         bool ParseObject(CJSONValueObject<TVal>* pOject)
         {
@@ -1086,6 +1102,7 @@ class CJSONParser
             bParseSuccess = pOject->Parse(m_pRoot);
             return bParseSuccess;
         }
+    
         template<class TVal>
         bool DumpObjectToFile(const std::string& Path, CJSONValueObject<TVal>* pOject)
         {
@@ -1097,8 +1114,7 @@ class CJSONParser
                 m_pRoot = NULL;
             }
             
-            pOject->Dump(m_pRoot);
-            if(m_pRoot)
+            if(pOject->Dump(m_pRoot))
             {
                 json_incref(m_pRoot); // decalare shared ownership.
                 bDumpSuccess = (json_dump_file(m_pRoot, Path.c_str(), m_Flags) == 0);
@@ -1107,9 +1123,34 @@ class CJSONParser
             {
                 std::cout << "Error dumping object! " << std::endl;
             }
-            
+            pOject->ClearBuffer();
             return bDumpSuccess;
         }
+    
+//        template<class TVal>
+//        bool UpdateObjectToFile(const std::string& Path, CJSONValueObject<TVal>* pOject)
+//        {
+//            bool bUpdateSuccess = false;
+//            
+//            if(m_pRoot)
+//            {
+//                json_decref(m_pRoot); // Release ownership.
+//                m_pRoot = NULL;
+//            }
+//            
+//            json_t* pJson = NULL;
+//            if(pOject->Dump(pJson) && LoadFromFile(Path))    // Current version && Previous version
+//            {
+//                if(json_object_update(m_pRoot, pJson) == 0) // update root with the object
+//                {
+//                    bUpdateSuccess = (json_dump_file(m_pRoot, Path.c_str(), m_Flags) == 0);
+//                }else { cout << "Error could not update object" << endl;}
+//            }else { cout << "Error could not dump object and/or Load from file. Object @ "<< pJson << " root @ "<< m_pRoot << endl;}
+//            
+//            pOject->ClearBuffer();
+//            
+//            return bUpdateSuccess;
+//        }
     
         size_t RootArrayLength()
         {
@@ -1191,8 +1232,10 @@ inline bool CJSONValueObject<DerivedClass>::LoadFromFile( const std::string& Pat
 template<class DerivedClass>
 inline bool CJSONValueObject<DerivedClass>::SaveToFile( const std::string& Path )
 {
+    bool bSaveSuccess = false;
     CJSONParser json;
-    return json.DumpObjectToFile(Path, m_pDerived);
+    bSaveSuccess = json.DumpObjectToFile(Path, m_pDerived);
+    return bSaveSuccess;
 }
 
 

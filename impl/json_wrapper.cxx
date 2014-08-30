@@ -119,7 +119,7 @@ class tabular : public json::CJSONValueObject<tabular>  // inherit the JSON Obje
         {
             fprintf(stdout, "length = %i, use_space = %s \n", length, (bUseSpace ? "true" : "false"));
         }
-    
+        void SetLength(size_t i ){length = int(i);}
     private:
         int                     length;
         bool                    bUseSpace;
@@ -205,6 +205,8 @@ class test : public json::CJSONValueObject<test>
             }
         }
     
+        void SetTabSpace(size_t i)  { tabConfig.SetLength(i); }
+    
     private:
         string              encoding;
         vector<string>      plugins;
@@ -222,6 +224,10 @@ int main(int argc, const char * argv[])
     {
         cout << "Error dumping the file." << endl;
     }
+    
+    test updatetest("update_test.json.sol");
+    updatetest.SetTabSpace(10);
+    updatetest.SaveToFile("update_test.json");
     
 #ifdef c_plus_plus_11                       // c++11 specific testing
 //    std::shared_ptr<int> pShared(new int);
