@@ -674,6 +674,8 @@ class CJSONValueObject : public CJSONValue
 //                        //std::cout << "Key (" << iter->first << ") was not found in file." << std::endl;
 //                    }
 //                }
+
+                bParseSuccess = true;
                 const char * key;
                 json_t* val;
                 json_object_foreach((json_t*)pVal, key, val)
