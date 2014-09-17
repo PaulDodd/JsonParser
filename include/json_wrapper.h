@@ -940,7 +940,7 @@ class CJSONValuePointer<TVal, CJSONValueObject<TVal> > : public CJSONValue
     private:
         TVal**                  m_pValue;
         TVal*                   m_DefaultValue;
-        CJSONValueObject<TVal>* m_pJson;
+        TVal*                   m_pJson;  // Can not use base class because that will not use class specializations!!!
 };
 
 #ifdef c_plus_plus_11
@@ -1070,7 +1070,7 @@ class CJSONParser
             m_pRoot = json_loads(pBuffer, 0, &m_LastError);
             if(!m_pRoot)
             {
-                fprintf(stderr, "error: %s \n", m_LastError.text);
+                //fprintf(stderr, "error: %s \n", m_LastError.text);
                 return false;
             }
             return true;
@@ -1081,7 +1081,7 @@ class CJSONParser
             m_pRoot = json_load_file(Path.c_str(), 0, &m_LastError);
             if(!m_pRoot)
             {
-                fprintf(stderr, "error: %s \n", m_LastError.text);
+                //fprintf(stderr, "error: %s \n", m_LastError.text);
                 return false;
             }
             return true;
