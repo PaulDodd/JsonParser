@@ -1070,7 +1070,7 @@ class CJSONParser
             m_pRoot = json_loads(pBuffer, 0, &m_LastError);
             if(!m_pRoot)
             {
-                //fprintf(stderr, "error: %s \n", m_LastError.text);
+                fprintf(stderr, "warning: %s \n", m_LastError.text);
                 return false;
             }
             return true;
@@ -1081,7 +1081,7 @@ class CJSONParser
             m_pRoot = json_load_file(Path.c_str(), 0, &m_LastError);
             if(!m_pRoot)
             {
-                //fprintf(stderr, "error: %s \n", m_LastError.text);
+                fprintf(stderr, "warning: %s \n", m_LastError.text);
                 return false;
             }
             return true;
@@ -1119,13 +1119,18 @@ class CJSONParser
             if(pOject->Dump(m_pRoot))
             {
                 json_incref(m_pRoot); // decalare shared ownership.
-                bDumpSuccess = (json_dump_file(m_pRoot, Path.c_str(), m_Flags) == 0);
+                bDumpSuccess = (json_dump_file(m_pRoot, Path.c_str(), m_Flags, &m_LastError) == 0);
+                if(! bDumpSuccess )
+                {
+                    perror("Error dumping file");
+                }
             }
             else
             {
                 std::cout << "Error dumping object! " << std::endl;
             }
             pOject->ClearBuffer();
+            
             return bDumpSuccess;
         }
     
