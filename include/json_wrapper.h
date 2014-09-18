@@ -1122,6 +1122,7 @@ class CJSONParser
                 bDumpSuccess = (json_dump_file(m_pRoot, Path.c_str(), m_Flags) == 0);
                 if(! bDumpSuccess )
                 {
+                    cout << "Error dumping file to disk!" << endl;;
                     perror("Error dumping file");
                 }
             }
