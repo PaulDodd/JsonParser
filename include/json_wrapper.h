@@ -1119,7 +1119,7 @@ class CJSONParser
             if(pOject->Dump(m_pRoot))
             {
                 json_incref(m_pRoot); // decalare shared ownership.
-                bDumpSuccess = (json_dump_file(m_pRoot, Path.c_str(), m_Flags, &m_LastError) == 0);
+                bDumpSuccess = (json_dump_file(m_pRoot, Path.c_str(), m_Flags) == 0);
                 if(! bDumpSuccess )
                 {
                     perror("Error dumping file");
