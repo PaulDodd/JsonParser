@@ -154,10 +154,8 @@ class test : public json::CJSONValueObject<test>
             this->AddStringArrayValue("plug-ins", &plugins);
             tabConfig.SetupJSONObject();
             this->AddObjectValue("indent", &tabConfig);
-            
-            AddNameValuePair<   std::vector< TestClass >,
-                                json::CJSONValueArray<  TestClass,
-                                                        json::CJSONValueObject<TestClass> > > ("ObjectArray", &testObjVec);
+            typedef json::CJSONValueArray<  TestClass, json::CJSONValueObject<TestClass> > testClassJsonArrayParser;
+            AddNameValuePair< std::vector< TestClass >, testClassJsonArrayParser > ("ObjectArray", &testObjVec);
         }
     
         bool LoadFromFile(const string& Path)
