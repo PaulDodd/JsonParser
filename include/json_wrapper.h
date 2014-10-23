@@ -83,7 +83,7 @@ class CJSONValue
         virtual bool Parse (const json_t* pVal) = 0;
         virtual bool Dump (json_t*& pRet) = 0;
     
-        virtual void Setup(size_t argc, ...) {} // to make virtual abstract?
+        virtual void Setup(size_t argc, ...) { cout << "passed in "<< argc << " arguments." << endl; } // to make virtual abstract?
     // Class Method
         void ClearJValue()
         {
@@ -464,7 +464,7 @@ class CJSONValueArray<TVal, CJSONValueObject<TVal> > : public CJSONValue
         const std::vector<TVal>& GetDefaultValue() const { return m_DefaultValue; }
     private:
         std::vector<TVal>*  m_pValue;
-        std::vector<TVal>   m_DefaultValue;;
+        std::vector<TVal>   m_DefaultValue;
 };
 
 // This requires c++11.
@@ -1088,7 +1088,7 @@ class CJSONParser
         }
     
         template<class TVal>
-        bool ParseObjectFromArray(const int& index, CJSONValueObject<TVal>* pOject)
+        bool ParseObjectFromArray(const size_t& index, CJSONValueObject<TVal>* pOject)
         {
             bool bParseSuccess = false;
             json_t* object_data = json_array_get(m_pRoot, index);
