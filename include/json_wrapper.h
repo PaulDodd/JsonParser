@@ -520,7 +520,7 @@ class CJSONValueTuple : public CJSONValue
     private:
     // std::tuple utility functions.
         template<size_t I = 0>
-        typename  std::enable_if<I == sizeof...(TVals), bool >::type ParseTupleElements(const json_t* pVal) { return true; } // All values have been parsed...
+        typename  std::enable_if<I == sizeof...(TVals), bool >::type ParseTupleElements(const json_t*) { return true; } // All values have been parsed...
     
         template<size_t I = 0>
         typename  std::enable_if< I < sizeof...(TVals), bool >::type ParseTupleElements(const json_t* pVal)
@@ -542,7 +542,7 @@ class CJSONValueTuple : public CJSONValue
         }
     
         template<size_t I = 0>
-        typename  std::enable_if<I == sizeof...(TVals), bool >::type DumpTupleElements(json_t*& pRet) { return true; } // All values have been dumped...
+        typename  std::enable_if<I == sizeof...(TVals), bool >::type DumpTupleElements(json_t*&) { return true; } // All values have been dumped...
     
         template<size_t I = 0>
         typename  std::enable_if< I < sizeof...(TVals), bool >::type DumpTupleElements(json_t*& pRet)
@@ -567,7 +567,7 @@ class CJSONValueTuple : public CJSONValue
         }
     
         template<class Type1, class Type2, class JType>
-        typename  std::enable_if< !std::is_same<Type1, Type2>::value, std::unique_ptr<CJSONValue> >::type create(const std::string& name, Type1* pVal)
+        typename  std::enable_if< !std::is_same<Type1, Type2>::value, std::unique_ptr<CJSONValue> >::type create(const std::string&, Type1*)
         {
             return std::unique_ptr<CJSONValue>(nullptr);
         }
