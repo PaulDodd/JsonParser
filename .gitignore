@@ -28,5 +28,6 @@ bin
 xcode_proj
 build
 test*
+json_wrapper/
 
 *~
