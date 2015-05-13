@@ -78,11 +78,11 @@ class CJSONValue
         {
             ClearJValue();
         }
-    
+
     // Abstract methods
         virtual bool Parse (const json_t* pVal) = 0;
         virtual bool Dump (json_t*& pRet) = 0;
-    
+
         virtual void Setup(size_t argc, ...) { cout << "passed in "<< argc << " arguments." << endl; } // to make virtual abstract?
     // Class Method
         void ClearJValue()
@@ -93,7 +93,7 @@ class CJSONValue
     // Accessor Methods
         const std::string& GetName() const { return m_name; }
         void SetName(std::string name ) { m_name = name; }
-    
+
         bool IsInt()    { return m_type == JSON_INTEGER; }
         bool IsFloat()  { return m_type == JSON_REAL; }
         bool IsString() { return m_type == JSON_STRING; }
@@ -101,7 +101,7 @@ class CJSONValue
         bool IsObject() { return m_type == JSON_OBJECT; }
         bool IsBool()   { return m_type == JSON_TRUE; }
         bool IsNull()   { return m_type == JSON_NULL; }
-    
+
         std::string TypeToString()
         {
             std::string type;
@@ -133,11 +133,11 @@ class CJSONValue
             {
                 type = "null";
             }
-            
+
             return type;
 
         }
-    
+
     protected:
         json_t*         m_pJValue;  // buffer to hold values for dump on create in the dump command.
         json_type       m_type;
@@ -149,15 +149,15 @@ class CJSONValueNumber : public CJSONValue // may need an unsigned version of th
 {
     public:
         typedef NVal type;
-    
+
         CJSONValueNumber(const std::string& name, NVal * pval, const NVal& defaultVal = 0) : CJSONValue(_type_, name), m_DefaultValue(defaultVal), m_pValue(pval)  {}
         ~CJSONValueNumber() {}
-    
+
     // Overloaded Methods
         bool Parse (const json_t* pVal)
         {
             bool bParseSuccess = false;
-            
+
             if(json_is_number(pVal))
             {
                 bParseSuccess = true;
@@ -168,7 +168,7 @@ class CJSONValueNumber : public CJSONValue // may need an unsigned version of th
             }
             return bParseSuccess;
         }
-    
+
         bool Dump (json_t*& pRet)
         {
             ClearJValue();
@@ -184,15 +184,15 @@ class CJSONValueNumber : public CJSONValue // may need an unsigned version of th
             {
                 pRet = json_real(*m_pValue);
             }
-            
+
             m_pJValue = pRet;
             return pRet != NULL;
         }
-    
+
     // Accessor Methods
         const NVal& GetValue() const { return *m_pValue; }
         const NVal& GetDefaultValue() const { return m_DefaultValue; }
-    
+
     private:
         NVal  m_DefaultValue;
         NVal* m_pValue;
@@ -207,10 +207,10 @@ class CJSONValueString : public CJSONValue
 {
     public:
         typedef std::string type;
-    
+
         CJSONValueString(const std::string& name, std::string* pval, const std::string& defaultVal = "") : CJSONValue(JSON_STRING, name),  m_DefaultValue(defaultVal), m_pValue(pval) {}
         ~CJSONValueString() {}
-    
+
         bool Parse (const json_t* pVal)
         {
             bool bParseSuccess = false;
@@ -224,7 +224,7 @@ class CJSONValueString : public CJSONValue
             }
             return bParseSuccess;
         }
-    
+
         bool Dump (json_t*& pRet)
         {
             ClearJValue();
@@ -233,10 +233,10 @@ class CJSONValueString : public CJSONValue
             m_pJValue = pRet;
             return pRet != NULL;
         }
-    
+
         const std::string& GetValue() const { return *m_pValue; }
         const std::string& GetDefaultValue() const { return m_DefaultValue; }
-    
+
     private:
         std::string  m_DefaultValue;
         std::string* m_pValue;
@@ -246,10 +246,10 @@ class CJSONValueBool : public CJSONValue
 {
     public:
         typedef bool type;
-    
+
         CJSONValueBool(const std::string& name, bool * pval, const bool& defaultVal = false) : CJSONValue(JSON_TRUE, name), m_DefaultValue(defaultVal), m_pValue(pval)  {}
         ~CJSONValueBool() {}
-    
+
         bool Parse (const json_t* pVal)
         {
             bool bParseSuccess = false;
@@ -263,7 +263,7 @@ class CJSONValueBool : public CJSONValue
             }
             return bParseSuccess;
         }
-    
+
         bool Dump (json_t*& pRet)
         {
             ClearJValue();
@@ -271,10 +271,10 @@ class CJSONValueBool : public CJSONValue
             m_pJValue = pRet;
             return pRet != NULL;
         }
-    
+
         const bool& GetValue() const { return *m_pValue; }
         const bool& GetDefaultValue() const { return m_DefaultValue; }
-    
+
     private:
         bool  m_DefaultValue;
         bool* m_pValue;
@@ -290,19 +290,19 @@ class CJSONValueArray : public CJSONValue
 {
     public:
         typedef std::vector<TVal> type;
-    
+
         CJSONValueArray(const std::string& name, std::vector<TVal>* pval, const std::vector<TVal>& defaultVal = std::vector<TVal>()) : CJSONValue(JSON_ARRAY, name), m_pValue(pval), m_DefaultValue(defaultVal)
         {
             m_DefaultArrayValue = JVal("", NULL).GetDefaultValue();
         }
-    
+
         CJSONValueArray(const CJSONValueArray& src ) : CJSONValue(JSON_ARRAY, src.GetName())
         {
             CopyFrom(src);
         }
-    
+
         ~CJSONValueArray() {}
-    
+
         bool Parse (const json_t* pVal)
         {
             bool bParseSuccess = false;
@@ -311,17 +311,17 @@ class CJSONValueArray : public CJSONValue
                 bParseSuccess = true;
                 size_t n = json_array_size(pVal);
                 json_t* data;
-                
+
                 for (size_t i = 0; i < n; i++)
                 {
                     TVal temp = m_DefaultArrayValue;
-                    
+
                     char array_number[30]; // should be enough space.
                     sprintf(&array_number[0], "-%zu", i);
                     JVal tjson((m_name + std::string(array_number)), &temp);
                     data = json_array_get(pVal, i);
                     bParseSuccess = tjson.Parse(data) && bParseSuccess;
-                    
+
                     m_pValue->push_back(temp);
                 }
             }
@@ -331,7 +331,7 @@ class CJSONValueArray : public CJSONValue
 
             return bParseSuccess;
         }
-    
+
         bool Dump (json_t*& pRet)
         {
             ClearJValue();
@@ -343,11 +343,11 @@ class CJSONValueArray : public CJSONValue
                 {
                     json_t* pVal = NULL;
                     TVal temp = m_pValue->at(i);
-                    
+
                     JVal tjson("", &temp);
-                    
+
                     bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
-                    
+
                     if(pVal)
                         bDumpSuccess = (json_array_append(pRet, pVal) != -1) && bDumpSuccess;
                     else
@@ -362,14 +362,14 @@ class CJSONValueArray : public CJSONValue
             m_pJValue = pRet;
             return bDumpSuccess;
         }
-    
-    
+
+
         const CJSONValueArray& CopyFrom( const CJSONValueArray& src )
         {
            m_pValue = &src.GetValue();
            m_DefaultValue = src.GetDefaultValue();
         }
-    
+
     // Accessor Methods
         const TVal& GetValue() const { return *m_pValue; }
         const std::vector<TVal>& GetDefaultValue() const { return m_DefaultValue; }
@@ -384,18 +384,18 @@ class CJSONValueArray<TVal, CJSONValueObject<TVal> > : public CJSONValue
 {
     public:
         typedef std::vector<TVal> type;
-    
+
         CJSONValueArray(const std::string& name, std::vector<TVal>* pval, const std::vector<TVal>& defaultVal = std::vector<TVal>()) : CJSONValue(JSON_ARRAY, name), m_pValue(pval), m_DefaultValue(defaultVal)
         {
         }
-    
+
         CJSONValueArray(const CJSONValueArray& src ) : CJSONValue(JSON_ARRAY, src.GetName())
         {
             CopyFrom(src);
         }
-    
+
         ~CJSONValueArray() {}
-    
+
         bool Parse (const json_t* pVal)
         {
             bool bParseSuccess = false;
@@ -404,12 +404,12 @@ class CJSONValueArray<TVal, CJSONValueObject<TVal> > : public CJSONValue
                 bParseSuccess = true;
                 size_t n = json_array_size(pVal);
                 json_t* data = NULL;
-                
+
                 for (size_t i = 0; i < n; i++)
                 {
                     TVal temp;
                     temp.SetupJSONObject();
-                    
+
                     char array_number[30]; // should be enough space.
                     sprintf(&array_number[0], "-%zu", i);
                     temp.SetName(m_name + "-" + std::string(array_number));
@@ -423,7 +423,7 @@ class CJSONValueArray<TVal, CJSONValueObject<TVal> > : public CJSONValue
             }
             return bParseSuccess;
         }
-    
+
         bool Dump (json_t*& pRet)
         {
             ClearJValue();
@@ -436,7 +436,7 @@ class CJSONValueArray<TVal, CJSONValueObject<TVal> > : public CJSONValue
                     json_t* pVal = NULL;
                     m_pValue->at(i).SetupJSONObject();
                     bDumpSuccess = m_pValue->at(i).Dump(pVal) && bDumpSuccess;
-                    
+
                     if(pVal)
                         bDumpSuccess = (json_array_append(pRet, pVal) != -1) && bDumpSuccess;
                     else
@@ -451,14 +451,14 @@ class CJSONValueArray<TVal, CJSONValueObject<TVal> > : public CJSONValue
             m_pJValue = pRet;
             return bDumpSuccess;
         }
-    
-    
+
+
         const CJSONValueArray& CopyFrom( const CJSONValueArray& src )
         {
            m_pValue = src.GetValue();
            m_DefaultValue = src.GetDefaultValue();
         }
-    
+
     // Accessor Methods
         const std::vector<TVal>* GetValue() const { return m_pValue; }
         const std::vector<TVal>& GetDefaultValue() const { return m_DefaultValue; }
@@ -475,11 +475,11 @@ class CJSONValueTuple : public CJSONValue
 {
     public:
         typedef CVal type;
-    
+
         CJSONValueTuple(const std::string& name, CVal* pval, const CVal&& defaultVal = CVal()) : CJSONValue(JSON_ARRAY, name), m_pValue(pval), m_DefaultValue(defaultVal)
         {
         }
-    
+
         ~CJSONValueTuple() {}
     // Overloaded Methods
         bool Parse (const json_t* pVal)
@@ -495,7 +495,7 @@ class CJSONValueTuple : public CJSONValue
 
             return bParseSuccess;
         }
-    
+
         bool Dump (json_t*& pRet)
         {
             ClearJValue();
@@ -513,37 +513,37 @@ class CJSONValueTuple : public CJSONValue
             m_pJValue = pRet;
             return bDumpSuccess;
         }
-    
-    
+
+
         const CVal& GetDefaultValue() { return m_DefaultValue; }
-    
+
     private:
     // std::tuple utility functions.
         template<size_t I = 0>
         typename  std::enable_if<I == sizeof...(TVals), bool >::type ParseTupleElements(const json_t*) { return true; } // All values have been parsed...
-    
+
         template<size_t I = 0>
         typename  std::enable_if< I < sizeof...(TVals), bool >::type ParseTupleElements(const json_t* pVal)
         {
             bool bParseSuccess = false;
-        
+
             json_t* data;
-            
+
             char array_number[30]; // should be enough space.
             sprintf(&array_number[0], "-%zu", I);
             std::string elemName(m_name + std::string(array_number));
-        
+
             data = json_array_get(pVal, I);
             typename std::tuple_element<I, CVal>::type* pElem = &std::get<I>(*m_pValue);
             std::unique_ptr<CJSONValue> pJson = CreateJSONValue<typename std::tuple_element<I, CVal>::type, TVals...>(I, elemName, pElem);
             bParseSuccess = pJson->Parse(data);
-            
+
             return ParseTupleElements<I+1>(pVal) && bParseSuccess;
         }
-    
+
         template<size_t I = 0>
         typename  std::enable_if<I == sizeof...(TVals), bool >::type DumpTupleElements(json_t*&) { return true; } // All values have been dumped...
-    
+
         template<size_t I = 0>
         typename  std::enable_if< I < sizeof...(TVals), bool >::type DumpTupleElements(json_t*& pRet)
         {
@@ -554,30 +554,30 @@ class CJSONValueTuple : public CJSONValue
 
             json_t* pVal = NULL;
             auto pElem = &std::get<I>(*m_pValue);
-            
+
             std::unique_ptr<CJSONValue> pJson = CreateJSONValue<typename std::tuple_element<I, CVal>::type, TVals...>(I, elemName, pElem);
             pJson->Dump(pVal);
-            
+
             if(pVal)
                 bDumpSuccess = (json_array_append(pRet, pVal) != -1) && bDumpSuccess;
             else
                 std::cout << "Error could not dump array element. " << m_name << "[" << I << "]" << std::endl;
-            
+
             return DumpTupleElements<I+1>(pRet) && bDumpSuccess;
         }
-    
+
         template<class Type1, class Type2, class JType>
         typename  std::enable_if< !std::is_same<Type1, Type2>::value, std::unique_ptr<CJSONValue> >::type create(const std::string&, Type1*)
         {
             return std::unique_ptr<CJSONValue>(nullptr);
         }
-    
+
         template<class Type1, class Type2, class JType>
         typename  std::enable_if< std::is_same<Type1, Type2>::value, std::unique_ptr<CJSONValue> >::type create(const std::string& name, Type1* pVal)
         {
             return std::unique_ptr<CJSONValue>(new JType(name, pVal));
         }
-    
+
         template<typename DataType, typename Type, typename... Others>
         typename  std::enable_if< 0 == sizeof...(Others), std::unique_ptr<CJSONValue> >::type CreateJSONValue(const size_t& Index, const std::string& name, DataType* pVal, size_t counter = 0)
         {
@@ -586,7 +586,7 @@ class CJSONValueTuple : public CJSONValue
             }
             return std::unique_ptr<CJSONValue>(nullptr);
         }
-    
+
         template<typename DataType, typename Type, typename... Others>
         typename  std::enable_if< 0 < sizeof...(Others), std::unique_ptr<CJSONValue> >::type CreateJSONValue(const size_t& Index, const std::string& name, DataType* pVal, size_t counter = 0)
         {
@@ -595,7 +595,7 @@ class CJSONValueTuple : public CJSONValue
             }
             return CreateJSONValue<DataType, Others...>(Index, name, pVal, ++counter);
         }
-    
+
     private:
         CVal*       m_pValue;
         CVal        m_DefaultValue;
@@ -608,9 +608,9 @@ class CJSONValueObject : public CJSONValue
 {
     public:
         typedef DerivedClass type;
-    
+
         CJSONValueObject(const std::string& name, DerivedClass* pval) : CJSONValue(JSON_OBJECT, name), m_pDerived(pval), m_bUpdate(JSON_OBJECT_TRACK_MISSING_VALUES_DEFAULT) {  }
-    
+
     /* Want to delete any way of copying this object -- is there any other way? */
     #ifdef c_plus_plus_11
         CJSONValueObject( const CJSONValueObject<DerivedClass>& src) = delete;
@@ -623,10 +623,10 @@ class CJSONValueObject : public CJSONValue
     #endif
     /****************************************************************************/
         ~CJSONValueObject() { Destroy(); }
-    
+
         void Destroy()
         {
-            
+
             size_t ct = 0;
             for(std::map<std::string, CJSONValue* >::iterator iter = m_Map.begin(); iter != m_Map.end(); iter++)
             {
@@ -698,17 +698,17 @@ class CJSONValueObject : public CJSONValue
             {
                 fprintf(stderr, "ERROR: %s is not an object as expected. \n", m_name.c_str());
             }
-            
+
             return bParseSuccess;
         }
-    
+
         virtual bool Dump (json_t*& pRet)
         {
             ClearJValue();
             bool bDumpSuccess = true;
-            
+
             pRet = json_object();
-            
+
             if(pRet)
             {
                 for(std::map<std::string, CJSONValue* >::iterator iter = m_Map.begin(); iter != m_Map.end(); iter++)
@@ -749,12 +749,12 @@ class CJSONValueObject : public CJSONValue
             m_pJValue = pRet;
             return bDumpSuccess;
         }
-    
+
     // Abstract methods
         virtual void SetupJSONObject() = 0;
-    
+
         virtual bool LoadFromFile( const std::string& Path ); // not abstract. implementation below.
-    
+
         virtual bool SaveToFile( const std::string& Path );   // not abstract. implementation below.
 
     // Class methods
@@ -771,7 +771,7 @@ class CJSONValueObject : public CJSONValue
                 //std::cout << "Already a key named "<< name << " is in the object. No action taken."<< std::endl;
             }
         }
-    
+
         // Could Remove the following becasuse of the encompassing method above.
         void AddIntegerValue(const std::string& name, int* pval)
         {
@@ -797,7 +797,7 @@ class CJSONValueObject : public CJSONValue
         {
             AddNameValuePair<std::vector<std::string>, CJSONValueArray<std::string, CJSONValueString> >(name, pval);
         }
-    
+
         template<class TVal>
         void AddObjectValue(const std::string& name, CJSONValueObject<TVal>* pval)
         {
@@ -811,10 +811,10 @@ class CJSONValueObject : public CJSONValue
                 //std::cout << "Already a key named "<< name << " is in the object. No action taken."<< std::endl;
             }
         }
-    
+
         DerivedClass* GetDerived()  { return m_pDerived; }
         const DerivedClass& GetDefaultValue()   { return *m_pDerived; }
-    
+
     private:
         DerivedClass*                               m_pDerived;
         std::map < std::string, CJSONValue* >       m_Map;              // map for each element in the object at this level. How to access data?
@@ -842,7 +842,7 @@ class CJSONValuePointer : public CJSONValue
 {
     public:
         typedef TVal type;
-    
+
         CJSONValuePointer(const std::string& name, TVal** pval, TVal* defaultVal = NULL) : CJSONValue(JSON_NULL, name), m_pValue(pval), m_pJson(NULL), m_DefaultValue(defaultVal)
         {
             if(m_pValue)
@@ -853,14 +853,14 @@ class CJSONValuePointer : public CJSONValue
                     // Caller must delete this
                     // memory
                     //**************************//
-                    
+
                     (*m_pValue) = new TVal; // must have default constructor. delete in the parent object.
                 }
-                
+
                 m_pJson = new JVal(name, (*m_pValue)); // delete in the desctructor.
             }
         }
-    
+
     // Destructor.
         ~CJSONValuePointer()
         {
@@ -868,18 +868,18 @@ class CJSONValuePointer : public CJSONValue
                 delete m_pJson;
             m_pJson = NULL;
         }
-    
+
     // Overloaded Methods
         bool Parse (const json_t* pVal)
         {
             return m_pJson->Parse(pVal);
         }
-    
+
         bool Dump (json_t*& pRet)
         {
             return m_pJson->Dump(pRet);
         }
-    
+
     // Accessor Methods
         const TVal* GetValue() const { return *m_pValue; }
         TVal* GetDefaultValue() const { return m_DefaultValue; }
@@ -895,7 +895,7 @@ class CJSONValuePointer<TVal, CJSONValueObject<TVal> > : public CJSONValue
 {
     public:
         typedef TVal type;
-    
+
         CJSONValuePointer(const std::string& name, TVal** pval, TVal* defaultVal = NULL) : CJSONValue(JSON_NULL, name), m_pValue(pval), m_DefaultValue(defaultVal), m_pJson(NULL)
         {
             if(m_pValue)
@@ -909,34 +909,34 @@ class CJSONValuePointer<TVal, CJSONValueObject<TVal> > : public CJSONValue
 
                     (*m_pValue) = new TVal; // must have default constructor.
                 }
-                
+
                 (*m_pValue)->SetupJSONObject();
                 m_pJson = (*m_pValue);
             }
 
         }
-    
+
     // Destructor.
         ~CJSONValuePointer()
         {
             // nothing to delete this time
         }
-    
+
     // Overloaded Methods
         bool Parse (const json_t* pVal)
         {
             return m_pJson->Parse(pVal);
         }
-    
+
         bool Dump (json_t*& pRet)
         {
             return m_pJson->Dump(pRet);
         }
-    
+
     // Accessor Methods
         const TVal* GetValue() const { return *m_pValue; }
         TVal* GetDefaultValue() const { return m_DefaultValue; }
-    
+
     private:
         TVal**                  m_pValue;
         TVal*                   m_DefaultValue;
@@ -949,7 +949,7 @@ class CJSONValueSmartPointer : public CJSONValue
 {
     public:
         typedef TVal type;
-    
+
         CJSONValueSmartPointer(const std::string& name, SmartPointer<TVal>* pval, TVal* defaultVal = NULL) : CJSONValue(JSON_NULL, name), m_pValue(pval), m_pJson(NULL), m_DefaultValue(defaultVal)
         {
             if(m_pValue)
@@ -960,14 +960,14 @@ class CJSONValueSmartPointer : public CJSONValue
                     // SmartPointer should delete
                     // memory
                     //**************************//
-                    
+
                     m_pValue->reset(new TVal);
                 }
-                
+
                 m_pJson = new JVal(name, m_pValue->get()); // delete in the desctructor.
             }
         }
-    
+
     // Destructor.
         ~CJSONValueSmartPointer()
         {
@@ -975,18 +975,18 @@ class CJSONValueSmartPointer : public CJSONValue
                 delete m_pJson;
             m_pJson = NULL;
         }
-    
+
     // Overloaded Methods
         bool Parse (const json_t* pVal)
         {
             return m_pJson->Parse(pVal);
         }
-    
+
         bool Dump (json_t*& pRet)
         {
             return m_pJson->Dump(pRet);
         }
-    
+
     // Accessor Methods
         const TVal* GetValue() const { return *m_pValue; }
         SmartPointer<TVal> GetDefaultValue() const { return m_DefaultValue; }
@@ -1001,7 +1001,7 @@ class CJSONValueSmartPointer<TVal, SmartPointer, CJSONValueObject<TVal> > : publ
 {
     public:
         typedef TVal type;
-    
+
         CJSONValueSmartPointer(const std::string& name, SmartPointer<TVal>* pval, TVal* defaultVal = NULL) : CJSONValue(JSON_NULL, name), m_pValue(pval),  m_DefaultValue(defaultVal), m_pJson(NULL)
         {
             if(m_pValue)
@@ -1012,7 +1012,7 @@ class CJSONValueSmartPointer<TVal, SmartPointer, CJSONValueObject<TVal> > : publ
                     // SmartPointer should delete
                     // memory
                     //**************************//
-                    
+
                     m_pValue->reset(new TVal);
                 }
 
@@ -1020,23 +1020,23 @@ class CJSONValueSmartPointer<TVal, SmartPointer, CJSONValueObject<TVal> > : publ
                 m_pJson = m_pValue->get();
             }
         }
-    
+
     // Destructor.
         ~CJSONValueSmartPointer()
         {
         }
-    
+
     // Overloaded Methods
         bool Parse (const json_t* pVal)
         {
             return m_pJson->Parse(pVal);
         }
-    
+
         bool Dump (json_t*& pRet)
         {
             return m_pJson->Dump(pRet);
         }
-    
+
     // Accessor Methods
         const TVal* GetValue() const { return *m_pValue; }
         SmartPointer<TVal> GetDefaultValue() const { return m_DefaultValue; }
@@ -1059,12 +1059,12 @@ class CJSONParser
         CJSONParser(size_t flags = (JSON_INDENT(4) | JSON_SORT_KEYS | JSON_PRESERVE_ORDER)) : m_pRoot(NULL), m_Flags(flags)
         {
         }
-    
+
         ~CJSONParser()
         {
             json_decref(m_pRoot); // Realease ownership
         }
-    
+
         bool Load(const char* pBuffer)
         {
             m_pRoot = json_loads(pBuffer, 0, &m_LastError);
@@ -1075,7 +1075,7 @@ class CJSONParser
             }
             return true;
         }
-    
+
         bool LoadFromFile(const std::string& Path)
         {
             m_pRoot = json_load_file(Path.c_str(), 0, &m_LastError);
@@ -1086,17 +1086,17 @@ class CJSONParser
             }
             return true;
         }
-    
+
         template<class TVal>
         bool ParseObjectFromArray(const size_t& index, CJSONValueObject<TVal>* pOject)
         {
             bool bParseSuccess = false;
             json_t* object_data = json_array_get(m_pRoot, index);
             bParseSuccess = pOject->Parse(object_data);
-            
+
             return bParseSuccess;
         }
-    
+
         template<class TVal>
         bool ParseObject(CJSONValueObject<TVal>* pOject)
         {
@@ -1104,18 +1104,17 @@ class CJSONParser
             bParseSuccess = pOject->Parse(m_pRoot);
             return bParseSuccess;
         }
-    
+
         template<class TVal>
         bool DumpObjectToFile(const std::string& Path, CJSONValueObject<TVal>* pOject)
         {
             bool bDumpSuccess = false;
-            
             if(m_pRoot)
             {
                 json_decref(m_pRoot); // Release ownership.
                 m_pRoot = NULL;
             }
-            
+
             if(pOject->Dump(m_pRoot))
             {
                 json_incref(m_pRoot); // decalare shared ownership.
@@ -1131,21 +1130,51 @@ class CJSONParser
                 std::cout << "Error dumping object! " << std::endl;
             }
             pOject->ClearBuffer();
-            
+
             return bDumpSuccess;
         }
-    
+
+        template<class TVal>
+        bool DumpObjectToString(std::string& ret, CJSONValueObject<TVal>* pOject)
+        {
+            ret.clear();
+            if(m_pRoot)
+            {
+                json_decref(m_pRoot); // Release ownership.
+                m_pRoot = NULL;
+            }
+
+            if(pOject->Dump(m_pRoot))
+            {
+                json_incref(m_pRoot); // decalare shared ownership.
+                char* s = NULL;
+                s = json_dumps(m_pRoot, m_Flags);
+                if( !s )
+                {
+                    cout << "Error dumping file to string!" << endl;
+                }
+                else
+                {
+                    ret = std::string(s);   // move the data into the return string.
+                    free(s);                // free the memory
+                }
+            }
+            pOject->ClearBuffer();
+            return ret.length() > 0;
+        }
+
+
 //        template<class TVal>
 //        bool UpdateObjectToFile(const std::string& Path, CJSONValueObject<TVal>* pOject)
 //        {
 //            bool bUpdateSuccess = false;
-//            
+//
 //            if(m_pRoot)
 //            {
 //                json_decref(m_pRoot); // Release ownership.
 //                m_pRoot = NULL;
 //            }
-//            
+//
 //            json_t* pJson = NULL;
 //            if(pOject->Dump(pJson) && LoadFromFile(Path))    // Current version && Previous version
 //            {
@@ -1154,12 +1183,12 @@ class CJSONParser
 //                    bUpdateSuccess = (json_dump_file(m_pRoot, Path.c_str(), m_Flags) == 0);
 //                }else { cout << "Error could not update object" << endl;}
 //            }else { cout << "Error could not dump object and/or Load from file. Object @ "<< pJson << " root @ "<< m_pRoot << endl;}
-//            
+//
 //            pOject->ClearBuffer();
-//            
+//
 //            return bUpdateSuccess;
 //        }
-    
+
         size_t RootArrayLength()
         {
             if ( IsRootArray() )
@@ -1175,40 +1204,40 @@ class CJSONParser
                 return json_is_object(m_pRoot);
             return false;
         }
-    
+
         bool IsRootArray()
         {
             if(IsRootValid())
                 return json_is_array(m_pRoot);
             return false;
         }
-    
+
         bool IsRootString()
         {
             if(IsRootValid())
                 return json_is_string(m_pRoot);
             return false;
         }
-    
+
         bool IsRootNumber()
         {
             if(IsRootValid())
                 return json_is_number(m_pRoot);
             return false;
         }
-    
+
         bool IsRootBool()
         {
             if(IsRootValid())
                 return json_is_boolean(m_pRoot);
             return false;
         }
-    
+
         bool IsRootValid()
         {
             return (m_pRoot && !json_is_null(m_pRoot));
         }
-    
+
     private:
         json_t*         m_pRoot;
         json_error_t    m_LastError;
@@ -1321,10 +1350,3 @@ New in version 2.5.
 
 
 */
-
-
-
-
-
-
-
