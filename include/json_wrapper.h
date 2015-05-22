@@ -1245,11 +1245,46 @@ class CJSONParser
 };
 
 
+// Here is an idea to make these classes more accessible. Lets try it!
+# if 0
 
+template< class T>
+class CJSONValueType {};
 
+template<>
+class CJSONValueType<int> : CJSONValueInt {};
 
+template<>
+class CJSONValueType<float> : CJSONValueFloat {};
 
+template<>
+class CJSONValueType<double> : CJSONValueDouble {};
 
+template<>
+class CJSONValueType<string> : CJSONValueString {};
+
+template<>
+class CJSONValueType<bool> : CJSONValueBool {};
+
+template<class T>
+class CJSONValueType< vector<T> > : CJSONValueArray<vector<T>, CJSONValueType<T> > {};
+
+#ifdef c_plus_plus_11
+
+template< typename... TVals >
+class CJSON
+{
+    public:
+        CJSON(std::string... Names) {}
+        ~CJSON() {}
+    private:
+        std::vector<std::string>    m_Names;
+        std::tuple<TVals...>        m_Values;
+};
+
+#endif
+
+#endif
 // Now implement the particulars
 template<class DerivedClass>
 inline bool CJSONValueObject<DerivedClass>::LoadFromFile( const std::string& Path )
