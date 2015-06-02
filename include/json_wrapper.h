@@ -1067,7 +1067,35 @@ class CJSONParser
 
         bool Load(const char* pBuffer)
         {
+            if(m_pRoot)
+            {
+                json_decref(m_pRoot); // Release ownership.
+                m_pRoot = NULL;
+            }
+
             m_pRoot = json_loads(pBuffer, 0, &m_LastError);
+            if(!m_pRoot)
+            {
+                fprintf(stderr, "warning: %s \n", m_LastError.text);
+                return false;
+            }
+            return true;
+        }
+
+        bool LoadFromString(const std::string& str)
+        {
+            return Load(str.c_str());
+        }
+
+        bool LoadFromBuffer(const char* pBuffer, const size_t& size)
+        {
+            if(m_pRoot)
+            {
+                json_decref(m_pRoot); // Release ownership.
+                m_pRoot = NULL;
+            }
+
+            m_pRoot = json_loadb(pBuffer, size, 0, &m_LastError);
             if(!m_pRoot)
             {
                 fprintf(stderr, "warning: %s \n", m_LastError.text);
@@ -1078,6 +1106,12 @@ class CJSONParser
 
         bool LoadFromFile(const std::string& Path)
         {
+            if(m_pRoot)
+            {
+                json_decref(m_pRoot); // Release ownership.
+                m_pRoot = NULL;
+            }
+
             m_pRoot = json_load_file(Path.c_str(), 0, &m_LastError);
             if(!m_pRoot)
             {
