@@ -39,6 +39,18 @@
 namespace json {
 using namespace std;
 
+template<class T>
+struct memory_ptr
+{
+    #ifdef c_plus_plus_11
+        typedef std::unique_ptr<T>  value_type;
+    #else
+        typedef std::auto_ptr<T>    value_type;
+    #endif
+};
+
+
+
 
 // TODOs:
 // 1.   make general numerical class with template. and that all numerical classes are compatible.
@@ -280,6 +292,11 @@ class CJSONValueBool : public CJSONValue
         bool* m_pValue;
 };
 
+
+/*
+NOTE: the class below will be deprecated and the array class at the bottom will be a more generalized form for all array types.
+*/
+
 // Will have to think about how to make this work for fixed array types of containers.
 // Implemeted to work with the std::vector class for ease.
 // ?? Could/Should make a CJSONValueFixedArray<> class and change the name of this class to be CJSONValueDynamicArray or CJSONValueVector ??
@@ -466,6 +483,12 @@ class CJSONValueArray<TVal, CJSONValueObject<TVal> > : public CJSONValue
         std::vector<TVal>*  m_pValue;
         std::vector<TVal>   m_DefaultValue;
 };
+
+
+/*
+End Note
+*/
+
 
 // This requires c++11.
 #ifdef c_plus_plus_11
@@ -1286,22 +1309,22 @@ template< class T>
 class CJSONValueType {};
 
 template<>
-class CJSONValueType<int> : CJSONValueInt {};
+class CJSONValueType<int> : CJSONValueInt { CJSONValueType(const std::string& name, int * pval) : CJSONValueInt(name, pvalue) {};
 
 template<>
-class CJSONValueType<float> : CJSONValueFloat {};
+class CJSONValueType<float> : CJSONValueFloat {CJSONValueType(const std::string& name, float * pval) : CJSONValueFloat(name, pvalue) {};
 
 template<>
-class CJSONValueType<double> : CJSONValueDouble {};
+class CJSONValueType<double> : CJSONValueDouble {CJSONValueType(const std::string& name, double * pval) : CJSONValueDouble(name, pvalue) {};
 
 template<>
-class CJSONValueType<string> : CJSONValueString {};
+class CJSONValueType<string> : CJSONValueString {CJSONValueType(const std::string& name, string * pval) : CJSONValueString(name, pvalue) {};
 
 template<>
-class CJSONValueType<bool> : CJSONValueBool {};
+class CJSONValueType<bool> : CJSONValueBool {CJSONValueType(const std::string& name, bool * pval) : CJSONValueBool(name, pvalue) {};
 
 template<class T>
-class CJSONValueType< vector<T> > : CJSONValueArray<vector<T>, CJSONValueType<T> > {};
+class CJSONValueType< vector<T> > : CJSONValueArray<vector<T>, CJSONValueType<T> > {CJSONValueType(const std::string& name, vector<T> * pval) : CJSONValueArray<vector<T>, CJSONValueType<T> >(name, pvalue) {};
 
 #ifdef c_plus_plus_11
 
@@ -1317,6 +1340,128 @@ class CJSON
 };
 
 #endif
+
+template< class ArrayType, class ValueType, class Alloc = std::allocator<ValueType> >
+class array_allocator
+{
+    public:
+        typedef Alloc       allocator_type;
+        typedef ValueType   value_type;
+        typedef ArrayType   array_type;
+        array_allocator(const allocator_type& alloc = allocator_type()) : m_alloc(alloc) {}
+
+        void allocate(array_type& array, const size_t& n) { array.resize(n); }
+
+    private:
+        allocator_type m_alloc;
+};
+
+template < class ArrayType, class ValueType, class Alloc = std::allocator<ValueType> >
+class CJSONValueArrayEx : public CJSONValue
+{
+    public:
+        typedef ArrayType type;
+
+        CJSONValueArrayEx(const std::string& name, ArrayType* pval, const ArrayType& defaultVal = std::vector<TVal>()) : CJSONValue(JSON_ARRAY, name), m_pValue(pval), m_DefaultValue(defaultVal)
+        {
+            m_DefaultArrayValue = JVal("", NULL).GetDefaultValue();
+        }
+
+        CJSONValueArrayEx(const CJSONValueArray& src ) : CJSONValue(JSON_ARRAY, src.GetName())
+        {
+            CopyFrom(src);
+        }
+
+        ~CJSONValueArrayEx() {}
+
+        bool Parse (const json_t* pVal)
+        {
+            bool bParseSuccess = false;
+            if(json_is_array(pVal))
+            {
+                bParseSuccess = true;
+                size_t n = json_array_size(pVal);
+                json_t* data;
+
+                for (size_t i = 0; i < n; i++)
+                {
+                    //TVal temp(m_DefaultArrayValue);
+
+
+                    char array_number[30]; // should be enough space.
+                    sprintf(&array_number[0], "-%zu", i);
+                    //JVal tjson((m_name + std::string(array_number)), &temp);
+
+
+                    data = json_array_get(pVal, i);
+                    if ( data )
+                    {
+                        bParseSuccess = tjson.Parse(data) && bParseSuccess;
+                        m_pValue->push_back(temp);
+                    }
+                    else{ cerr << "" << endl;}
+                }
+            }
+            else{
+                fprintf(stderr, "ERROR: %s is not an array as expected. \n", m_name.c_str());
+            }
+
+            return bParseSuccess;
+        }
+
+        bool Dump (json_t*& pRet)
+        {
+            ClearJValue();
+            bool bDumpSuccess = true;
+            pRet = json_array();
+            if(pRet)
+            {
+                for( size_t i = 0; i < m_pValue->size(); i++)
+                {
+                    json_t* pVal = NULL;
+                    TVal temp = m_pValue->at(i);
+
+                    JVal tjson("", &temp);
+
+                    bDumpSuccess = tjson.Dump(pVal) && bDumpSuccess;
+
+                    if(pVal)
+                        bDumpSuccess = (json_array_append(pRet, pVal) != -1) && bDumpSuccess;
+                    else
+                        std::cout << "Error could not dump array element. "<< m_name << "-"<< i << std::endl;
+                }
+            }
+            else
+            {
+                bDumpSuccess = false;
+                std::cout << "Error! Could not dump array. "<< m_name << std::endl;
+            }
+            m_pJValue = pRet;
+            return bDumpSuccess;
+        }
+
+
+        const CJSONValueArrayEx& CopyFrom( const CJSONValueArrayEx& src )
+        {
+           m_pValue = &src.GetValue();
+           m_DefaultValue = src.GetDefaultValue();
+        }
+
+    // Accessor Methods
+        const TVal& GetValue() const { return *m_pValue; }
+        const std::vector<TVal>& GetDefaultValue() const { return m_DefaultValue; }
+    private:
+        ArrayType*  m_pValue;
+        ArrayType   m_DefaultValue;
+        //ValueType   m_DefaultArrayValue;
+};
+
+
+
+
+
+
+
 
 #endif
 // Now implement the particulars
